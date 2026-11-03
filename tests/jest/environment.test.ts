@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import type { Express } from "express";
 import request from "supertest";
-import { TEST_ENV } from "./global-setup.js";
+import { TEST_ENV } from "./globalSetup.js";
 
 const original = { ...process.env };
 afterEach(() => {

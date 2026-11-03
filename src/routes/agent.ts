@@ -6,7 +6,7 @@ import { prisma } from "../lib/db.js";
 import { badRequest } from "../lib/errors.js";
 import { logChange } from "../lib/logs.js";
 import { notify } from "../lib/notify.js";
-import { jsonRateLimit } from "../lib/rate_limit.js";
+import { jsonRateLimit } from "../lib/rateLimit.js";
 import { parse } from "../lib/validate.js";
 import { currentUser, requirePermission } from "../middleware/auth.js";
 import { createSchema } from "./reservations.js";
@@ -14,7 +14,7 @@ import { createSchema } from "./reservations.js";
 /** Routes for the AI booking assistant (role AGENT). Thin on purpose: booking reuses bookReservation(). */
 export const agentRouter = Router();
 
-/** Owner rules: 1 upcoming assistant booking until the email signs up, then 3; more looks like spam (agent_spec.md §5.4). */
+/** Owner rules: 1 upcoming assistant booking until the email signs up, then 3; more looks like spam (AGENT_SPEC.md §5.4). */
 const LIMIT_NOT_SIGNED_UP = 1;
 const LIMIT_SIGNED_UP = 3;
 const NOT_SIGNED_UP_MESSAGE = "This email already has a booking made with the assistant. To book a different time, sign up with this email in the app, cancel that booking there, then ask me again.";
@@ -54,7 +54,7 @@ agentRouter.post("/reservations", requirePermission("reservation:create_on_behal
     }
   }
 
-  // Password-less guest account: sign-up with this email claims it later (agent_spec.md D1).
+  // Password-less guest account: sign-up with this email claims it later (AGENT_SPEC.md D1).
   // INSERT ... ON CONFLICT DO NOTHING, then read: unlike upsert, this stays atomic when several
   // confirmations for a new email arrive at once (found on real PostgreSQL).
   const { count: created } = await prisma.user.createMany({ data: [{ email, phone, name: email.split("@")[0], passwordHash: null }], skipDuplicates: true });

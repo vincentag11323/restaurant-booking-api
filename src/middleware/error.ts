@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { logFailure } from "../lib/logs.js";
 import { HttpError } from "../lib/errors.js";
 
-/** Every failed response goes through here so it's logged (api_spec.md §8). */
+/** Every failed response goes through here so it's logged (API_SPEC.md §8). */
 export function sendFailure(req: Request, res: Response, status: number, message: string, error?: Error) {
   logFailure({ status, method: req.method, path: req.originalUrl.split("?")[0], message, userId: req.auth?.userId, ip: req.ip, error });
   res.status(status).json({ message });

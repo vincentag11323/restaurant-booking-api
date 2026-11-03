@@ -1,4 +1,4 @@
-// Logs (api_spec.md §8; test_scenarios_app.md S9, S10, S16).
+// Logs (API_SPEC.md §8; TEST_SCENARIOS_APP.md S9, S10, S16).
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,7 +8,7 @@ import type { Request } from "express";
 import request from "supertest";
 import { prisma } from "../../src/lib/db.js";
 import { logChange, logFailure } from "../../src/lib/logs.js";
-import { TEST_ENV } from "./global-setup.js";
+import { TEST_ENV } from "./globalSetup.js";
 import { app, daysAhead, registerGuest, sessionCookie } from "./helpers.js";
 
 afterAll(() => prisma.$disconnect());

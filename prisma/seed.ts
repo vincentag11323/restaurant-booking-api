@@ -62,7 +62,7 @@ async function main() {
     });
   }
 
-  // The AI booking assistant's account (role AGENT, agent_spec.md §5.5): no password; its one ApiKey row holds only the SHA-256 of AGENT_API_KEY.
+  // The AI booking assistant's account (role AGENT, AGENT_SPEC.md §5.5): no password; its one ApiKey row holds only the SHA-256 of AGENT_API_KEY.
   if (agentApiKey) {
     const existing = await prisma.user.findUnique({ where: { email: AGENT_EMAIL } });
     if (existing && existing.role !== "AGENT") {

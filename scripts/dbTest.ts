@@ -1,4 +1,4 @@
-// `npm run db-test`: an in-memory TEST database with fake data, rebuilt on every start (e2e_spec.md §2).
+// `npm run db-test`: an in-memory TEST database with fake data, rebuilt on every start (E2E_SPEC.md §2).
 // Serves Postgres on DB_TEST_PORT (default 5433) until stopped. Never point production at it.
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
@@ -22,7 +22,7 @@ const env = {
 };
 await run("npx prisma migrate deploy", { env });
 await run("npx tsx prisma/seed.ts", { env });
-await run("npx tsx prisma/seed-test.ts", { env });
+await run("npx tsx prisma/seedTest.ts", { env });
 
 console.info(`
   ┌──────────────────────────────────────────────────────────────────────────┐

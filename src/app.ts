@@ -6,7 +6,7 @@ import { config } from "./config.js";
 import { adminRouter } from "./routes/admin.js";
 import { agentRouter } from "./routes/agent.js";
 import { HttpError } from "./lib/errors.js";
-import { jsonRateLimit } from "./lib/rate_limit.js";
+import { jsonRateLimit } from "./lib/rateLimit.js";
 import { requireAdmin, requireAgentKey, requireSession } from "./middleware/auth.js";
 import { errorHandler, notFoundRoute } from "./middleware/error.js";
 import { authRouter } from "./routes/auth.js";
@@ -32,7 +32,7 @@ export function createApp() {
   app.use(express.json({ limit: "100kb" }));
   app.use(cookieParser());
 
-  // Route groups (api_spec.md, "Route groups"): every path starts with one group.
+  // Route groups (API_SPEC.md, "Route groups"): every path starts with one group.
   const publicRoutes = Router()
     .get("/health", (_req, res) => {
       res.json({ status: "ok" });

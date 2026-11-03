@@ -1,4 +1,4 @@
-// One auth check per route group (api_spec.md, "Route groups"). Each check reads only its own credential
+// One auth check per route group (API_SPEC.md, "Route groups"). Each check reads only its own credential
 // and passes { userId, role } to the route in req.auth; routes never read identity from the body or query.
 import type { NextFunction, Request, Response } from "express";
 import type { Role } from "../generated/prisma/enums.js";

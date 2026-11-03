@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "@jest/globals";
 import request from "supertest";
 import { prisma } from "../../src/lib/db.js";
-import { TEST_ENV } from "./global-setup.js";
+import { TEST_ENV } from "./globalSetup.js";
 import { app, daysAhead, loginAdmin, registerGuest } from "./helpers.js";
 
 afterAll(() => prisma.$disconnect());

@@ -9,7 +9,7 @@ export type Permission =
   | "reservation:create_on_behalf"
   | "guest:read_one";
 
-/** The single source of truth for RBAC (security_spec.md §1, agent_spec.md §5.5). */
+/** The single source of truth for RBAC (SECURITY_SPEC.md §1, AGENT_SPEC.md §5.5). */
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   USER: ["profile:own", "reservations:own", "menu:recommendations"],
   ADMIN: ["profile:own", "admin:read"],

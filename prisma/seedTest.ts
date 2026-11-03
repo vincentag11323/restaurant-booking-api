@@ -1,4 +1,4 @@
-// TEST DATA ONLY (e2e_spec.md §2). Loaded by `npm run db-test` on top of the normal seed.
+// TEST DATA ONLY (E2E_SPEC.md §2). Loaded by `npm run db-test` on top of the normal seed.
 // Every guest here is fake (*@guests.test); passwords are public test values.
 import bcrypt from "bcryptjs";
 import { bookReservation, generateReservationCode } from "../src/domain/reservations.js";

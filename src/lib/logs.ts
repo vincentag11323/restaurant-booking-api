@@ -1,4 +1,4 @@
-// Logs (api_spec.md §8): logs/app.log for every successful database change, logs/errors.log for every failed
+// Logs (API_SPEC.md §8): logs/app.log for every successful database change, logs/errors.log for every failed
 // request. One `[METHOD] {json}` line each, also printed to the console. Never logs bodies, query strings,
 // secrets or personal data.
 import { appendFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";

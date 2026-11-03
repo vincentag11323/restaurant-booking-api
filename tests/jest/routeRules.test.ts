@@ -1,10 +1,10 @@
-// Route groups and their middleware (api_spec.md, "Route groups"; test_scenarios_app.md S2, S4, S11–S15).
+// Route groups and their middleware (API_SPEC.md, "Route groups"; TEST_SCENARIOS_APP.md S2, S4, S11–S15).
 import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "@jest/globals";
 import request from "supertest";
 import { prisma } from "../../src/lib/db.js";
 import { sha256Hex } from "../../src/lib/tokens.js";
-import { TEST_ENV } from "./global-setup.js";
+import { TEST_ENV } from "./globalSetup.js";
 import { ADMIN, app, daysAhead, loginAdmin, registerGuest } from "./helpers.js";
 
 afterAll(() => prisma.$disconnect());

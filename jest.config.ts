@@ -11,8 +11,8 @@ const config: Config = {
     // The ESM-generated Prisma client imports .mjs runtime files; Jest runs CommonJS, so use Prisma's .js twins.
     "^@prisma/client/runtime/(.*)\\.mjs$": "@prisma/client/runtime/$1.js",
   },
-  globalSetup: "<rootDir>/tests/jest/global-setup.ts",
-  globalTeardown: "<rootDir>/tests/jest/global-teardown.ts",
+  globalSetup: "<rootDir>/tests/jest/globalSetup.ts",
+  globalTeardown: "<rootDir>/tests/jest/globalTeardown.ts",
   // One shared database: run files serially so capacity checks are deterministic.
   maxWorkers: 1,
   testTimeout: 30_000,

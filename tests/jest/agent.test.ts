@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 import { afterAll, describe, expect, it, jest } from "@jest/globals";
 import request from "supertest";
 import { prisma } from "../../src/lib/db.js";
-import { TEST_ENV } from "./global-setup.js";
+import { TEST_ENV } from "./globalSetup.js";
 import { ADMIN, app, daysAhead, registerGuest } from "./helpers.js";
 
 const AGENT_EMAIL = "assistant@resortos.internal";
