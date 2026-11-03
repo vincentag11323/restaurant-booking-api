@@ -1,11 +1,17 @@
+import { createHash, randomBytes } from "node:crypto";
 import { afterAll, describe, expect, it } from "@jest/globals";
-import jwt from "jsonwebtoken";
 import request from "supertest";
 import { prisma } from "../../src/lib/db.js";
-import { TEST_ENV } from "./global-setup.js";
-import { ADMIN, app, registerGuest } from "./helpers.js";
+import { ADMIN, app, daysAhead, registerGuest, sessionCookie } from "./helpers.js";
 
 afterAll(() => prisma.$disconnect());
+
+const EXPIRED = { message: "Invalid or expired token" };
+const forgedCookie = () => `session=${randomBytes(32).toString("base64url")}`;
+/** The Session row behind a `session=<token>` Cookie header (only the token's SHA-256 is stored). */
+const tokenHash = (cookie: string) => createHash("sha256").update(cookie.slice("session=".length)).digest("hex");
+const sessionRow = (cookie: string) => prisma.session.findUnique({ where: { tokenHash: tokenHash(cookie) } });
+const expire = (cookie: string) => prisma.session.update({ where: { tokenHash: tokenHash(cookie) }, data: { expiresAt: new Date(Date.now() - 1000) } });
 
 describe("auth", () => {
   it("registers with a phone and audits it", async () => {
@@ -66,13 +72,10 @@ describe("auth", () => {
     expect(me.headers["set-cookie"]).toBeUndefined();
   });
 
-  it("rejects a forged, expired or wrongly signed session cookie", async () => {
-    const { user } = await registerGuest();
-    const expired = jwt.sign({ role: "USER", exp: Math.floor(Date.now() / 1000) - 60 }, TEST_ENV.SESSION_SECRET, { subject: user.id });
-    const wrongSecret = jwt.sign({ role: "USER" }, "some-other-secret-some-other-secret", { subject: user.id, expiresIn: 3600 });
-    for (const token of ["forged.token.value", expired, wrongSecret]) {
-      const res = await request(app).get("/api/me").set("Cookie", `session=${token}`);
-      expect([res.status, res.body]).toEqual([401, { message: "Invalid or expired token" }]);
+  it("rejects a forged session cookie", async () => {
+    for (const cookie of ["session=forged", forgedCookie()]) {
+      const res = await request(app).get("/api/me").set("Cookie", cookie);
+      expect([res.status, res.body]).toEqual([401, EXPIRED]);
     }
   });
 
@@ -97,6 +100,77 @@ describe("auth", () => {
     await prisma.user.delete({ where: { id: user.id } });
     const res = await request(app).get("/api/me").set(auth);
     expect([res.status, res.body]).toEqual([401, { message: "Invalid or expired token" }]);
+  });
+});
+
+describe("server-side sessions", () => {
+  it("stores only the SHA-256 of a random 43-character token, valid for 1 hour", async () => {
+    const { auth, user } = await registerGuest();
+    const token = auth.Cookie.slice("session=".length);
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const row = await sessionRow(auth.Cookie);
+    expect(row).toMatchObject({ userId: user.id, tokenHash: tokenHash(auth.Cookie) });
+    expect(JSON.stringify(row)).not.toContain(token);
+    expect(Math.abs((row!.expiresAt.getTime() - row!.createdAt.getTime()) / 1000 - 3600)).toBeLessThanOrEqual(2);
+  });
+
+  it("(A14) signing out ends the session at once, even for a saved copy of the cookie", async () => {
+    const { auth } = await registerGuest();
+    const copy = { ...auth };
+    const out = await request(app).post("/api/auth/logout").set(auth);
+    expect([out.status, out.body]).toEqual([200, { message: "Logged out" }]);
+    const me = await request(app).get("/api/me").set(copy);
+    expect([me.status, me.body]).toEqual([401, EXPIRED]);
+    expect(await sessionRow(copy.Cookie)).toBeNull();
+  });
+
+  it("(A15) a session older than 1 hour is refused, and signing in again deletes the old row", async () => {
+    const { auth, user, email } = await registerGuest();
+    await expire(auth.Cookie);
+    const me = await request(app).get("/api/me").set(auth);
+    expect([me.status, me.body]).toEqual([401, EXPIRED]);
+
+    const login = await request(app).post("/api/auth/login").send({ email, password: "Password123" });
+    expect(login.status).toBe(200);
+    expect(await sessionRow(auth.Cookie)).toBeNull();
+    expect(await prisma.session.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  it("(A16) signing out on one device leaves the other devices signed in", async () => {
+    const { auth: deviceA, email } = await registerGuest();
+    const deviceB = { Cookie: sessionCookie(await request(app).post("/api/auth/login").send({ email, password: "Password123" })) };
+    await request(app).post("/api/auth/logout").set(deviceA);
+    expect((await request(app).get("/api/me").set(deviceB)).status).toBe(200);
+    const a = await request(app).get("/api/me").set(deviceA);
+    expect([a.status, a.body]).toEqual([401, EXPIRED]);
+  });
+
+  it("(S13) an old or forged cookie is ignored by sign-in, sign-up and the public routes", async () => {
+    const { auth: expired } = await registerGuest();
+    await expire(expired.Cookie);
+    for (const cookie of [forgedCookie(), expired.Cookie]) {
+      const login = await request(app).post("/api/auth/login").set("Cookie", cookie).send(ADMIN);
+      expect(login.status).toBe(200);
+      expect(sessionCookie(login)).not.toBe(cookie);
+      const register = await request(app).post("/api/auth/register").set("Cookie", cookie).send({ email: `jest-s13-${randomBytes(6).toString("hex")}@test.dev`, password: "Password123", name: "S13" });
+      expect(register.status).toBe(201);
+      expect((await request(app).get("/api/menu").set("Cookie", cookie)).status).toBe(200);
+      expect((await request(app).get(`/api/availability?branch=BRANCH_1&sector=MAIN_HALL&date=${daysAhead(30)}`).set("Cookie", cookie)).status).toBe(200);
+    }
+  });
+
+  it("signing out with a forged cookie answers 200 and touches no other session", async () => {
+    const { auth } = await registerGuest();
+    const out = await request(app).post("/api/auth/logout").set("Cookie", forgedCookie());
+    expect([out.status, out.body]).toEqual([200, { message: "Logged out" }]);
+    expect((await request(app).get("/api/me").set(auth)).status).toBe(200);
+  });
+
+  it("signing out with an expired cookie deletes its row", async () => {
+    const { auth } = await registerGuest();
+    await expire(auth.Cookie);
+    expect((await request(app).post("/api/auth/logout").set(auth)).status).toBe(200);
+    expect(await sessionRow(auth.Cookie)).toBeNull();
   });
 });
 

@@ -3,8 +3,7 @@ import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { HttpError, notFound } from "../../src/lib/errors.js";
 import { notify } from "../../src/lib/notify.js";
-import jwt from "jsonwebtoken";
-import { sha256Hex, signSessionToken, verifySessionToken } from "../../src/lib/tokens.js";
+import { newSessionToken, sha256Hex } from "../../src/lib/tokens.js";
 import { parse } from "../../src/lib/validate.js";
 import { currentUser } from "../../src/middleware/auth.js";
 import { errorHandler } from "../../src/middleware/error.js";
@@ -44,21 +43,14 @@ describe("error handler", () => {
 });
 
 describe("auth helpers", () => {
-  it("round-trips a session token", () => {
-    expect(verifySessionToken(signSessionToken({ id: "u1", role: "ADMIN" }))).toEqual({ id: "u1", role: "ADMIN" });
+  it("makes a new random 32-byte session token each time (43 base64url characters)", () => {
+    const [a, b] = [newSessionToken(), newSessionToken()];
+    expect(a).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(b).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(a).not.toBe(b);
   });
 
-  it("issues session tokens valid for 1 hour", () => {
-    const { exp, iat } = JSON.parse(Buffer.from(signSessionToken({ id: "u1", role: "USER" }).split(".")[1], "base64url").toString());
-    expect(exp - iat).toBe(3600);
-  });
-
-  it("refuses a token signed with another secret", () => {
-    const token = jwt.sign({ role: "USER" }, "some-other-secret-some-other-secret", { subject: "u1", expiresIn: 3600 });
-    expect(() => verifySessionToken(token)).toThrow();
-  });
-
-  it("hashes the agent API key as SHA-256 hex", () => {
+  it("hashes secrets as SHA-256 hex", () => {
     expect(sha256Hex("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
   });
 

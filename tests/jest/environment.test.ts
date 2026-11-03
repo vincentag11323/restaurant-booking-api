@@ -23,12 +23,8 @@ function load<T>(path: string, env: Record<string, string | undefined>): T {
 }
 
 describe("config", () => {
-  it("fails fast when a required secret is missing", () => {
-    expect(() => load("../../src/config.js", { SESSION_SECRET: undefined })).toThrow("Missing required env var: SESSION_SECRET");
-  });
-
-  it("refuses a SESSION_SECRET shorter than 32 characters", () => {
-    expect(() => load("../../src/config.js", { SESSION_SECRET: "short-secret" })).toThrow("SESSION_SECRET must be at least 32 characters");
+  it("fails fast when DATABASE_URL is missing", () => {
+    expect(() => load("../../src/config.js", { DATABASE_URL: undefined })).toThrow("Missing required env var: DATABASE_URL");
   });
 
   it("falls back to documented defaults", () => {
@@ -42,6 +38,8 @@ describe("config", () => {
       ERROR_LOG_MAX_BYTES: undefined,
       ERROR_LOG_CONSOLE: undefined,
       SESSION_TTL: undefined,
+      // Sessions live in the database now; no signing secret is needed.
+      SESSION_SECRET: undefined,
     });
     expect(config).toMatchObject({
       port: 4000,

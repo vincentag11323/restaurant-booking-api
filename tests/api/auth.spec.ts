@@ -42,6 +42,16 @@ test.describe("guest auth", () => {
     expect((await res.json()).email).toBe(email);
   });
 
+  test("(A14) after sign-out the same cookie is refused at once", async ({ request }) => {
+    const { headers } = await registerGuest(request);
+    expect((await request.get("/api/me", { headers })).status()).toBe(200);
+    const out = await request.post("/api/auth/logout", { headers });
+    expect(out.status()).toBe(200);
+    const res = await request.get("/api/me", { headers });
+    expect(res.status()).toBe(401);
+    expect(await res.json()).toEqual({ message: "Invalid or expired token" });
+  });
+
   test("there is no refresh route", async ({ request }) => {
     const res = await request.post("/api/auth/refresh");
     expect(res.status()).toBe(404);
