@@ -6,7 +6,11 @@ const config: Config = {
   // swc only strips types; it doesn't need TypeScript's JS API (absent in TypeScript 7), unlike ts-jest.
   transform: { "^.+\\.ts$": ["@swc/jest", { jsc: { target: "es2022" }, module: { type: "commonjs" } }] },
   // Source uses NodeNext-style ".js" import specifiers for ".ts" files.
-  moduleNameMapper: { "^(\\.{1,2}/.*)\\.js$": "$1" },
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+    // The ESM-generated Prisma client imports .mjs runtime files; Jest runs CommonJS, so use Prisma's .js twins.
+    "^@prisma/client/runtime/(.*)\\.mjs$": "@prisma/client/runtime/$1.js",
+  },
   globalSetup: "<rootDir>/tests/jest/global-setup.ts",
   globalTeardown: "<rootDir>/tests/jest/global-teardown.ts",
   // One shared database: run files serially so capacity checks are deterministic.

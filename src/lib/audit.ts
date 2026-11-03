@@ -11,7 +11,8 @@ export type AuditAction =
   | "CANCEL_RESERVATION"
   | "VIEW_RESERVATION_DETAIL"
   | "EXPORT_RESERVATIONS"
-  | "SECURITY_ALERT";
+  | "SECURITY_ALERT"
+  | "VIEW_GUEST";
 
 export async function audit(
   req: Request,
@@ -36,6 +37,7 @@ export async function securityAlert(req: Request, reason: string, metadata: Reco
 }
 
 const FAILED_LOGIN_THRESHOLD = 10;
+const FAILED_LOGIN_REASON = "Repeated failed logins from one IP";
 const FAILED_LOGIN_WINDOW_MS = 5 * 60_000;
 
 /** Raises one alert per window once an IP reaches the failed-login threshold. */
@@ -43,9 +45,12 @@ export async function checkFailedLogins(req: Request) {
   const since = new Date(Date.now() - FAILED_LOGIN_WINDOW_MS);
   const [count, alreadyAlerted] = await Promise.all([
     prisma.auditLog.count({ where: { action: "LOGIN_FAILED", ipAddress: req.ip, timestamp: { gte: since } } }),
-    prisma.auditLog.count({ where: { action: "SECURITY_ALERT", ipAddress: req.ip, timestamp: { gte: since } } }),
+    // Only an earlier failed-login alert suppresses this one; other alerts (e.g. bulk export) from the same IP don't.
+    prisma.auditLog.count({
+      where: { action: "SECURITY_ALERT", ipAddress: req.ip, timestamp: { gte: since }, metadata: { path: ["reason"], equals: FAILED_LOGIN_REASON } },
+    }),
   ]);
   if (count >= FAILED_LOGIN_THRESHOLD && alreadyAlerted === 0) {
-    await securityAlert(req, "Repeated failed logins from one IP", { ip: req.ip, count });
+    await securityAlert(req, FAILED_LOGIN_REASON, { ip: req.ip, count });
   }
 }

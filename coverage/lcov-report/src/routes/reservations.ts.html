@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>147/147</span>
+                <span class='fraction'>129/129</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>24/24</span>
+                <span class='fraction'>21/21</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>147/147</span>
+                <span class='fraction'>129/129</span>
             </div>
         
             
@@ -192,25 +192,8 @@
 <a name='L127'></a><a href='#L127'>127</a>
 <a name='L128'></a><a href='#L128'>128</a>
 <a name='L129'></a><a href='#L129'>129</a>
-<a name='L130'></a><a href='#L130'>130</a>
-<a name='L131'></a><a href='#L131'>131</a>
-<a name='L132'></a><a href='#L132'>132</a>
-<a name='L133'></a><a href='#L133'>133</a>
-<a name='L134'></a><a href='#L134'>134</a>
-<a name='L135'></a><a href='#L135'>135</a>
-<a name='L136'></a><a href='#L136'>136</a>
-<a name='L137'></a><a href='#L137'>137</a>
-<a name='L138'></a><a href='#L138'>138</a>
-<a name='L139'></a><a href='#L139'>139</a>
-<a name='L140'></a><a href='#L140'>140</a>
-<a name='L141'></a><a href='#L141'>141</a>
-<a name='L142'></a><a href='#L142'>142</a>
-<a name='L143'></a><a href='#L143'>143</a>
-<a name='L144'></a><a href='#L144'>144</a>
-<a name='L145'></a><a href='#L145'>145</a>
-<a name='L146'></a><a href='#L146'>146</a>
-<a name='L147'></a><a href='#L147'>147</a>
-<a name='L148'></a><a href='#L148'>148</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L130'></a><a href='#L130'>130</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -266,13 +249,13 @@
 <span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">2x</span>
@@ -282,25 +265,6 @@
 <span class="cline-any cline-yes">14x</span>
 <span class="cline-any cline-yes">14x</span>
 <span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-yes">12x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
 <span class="cline-any cline-yes">11x</span>
 <span class="cline-any cline-yes">11x</span>
 <span class="cline-any cline-yes">11x</span>
@@ -360,14 +324,14 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Router } from "express";
 import { z } from "zod";
 import { MAX_PARTY_SIZE } from "../domain/allocation.js";
-import { availability, claimConfirmed, generateReservationCode, reservationSelect, resolveSlot, withAllocation } from "../domain/reservations.js";
+import { availability, bookReservation, claimConfirmed, reservationSelect, resolveSlot, withAllocation } from "../domain/reservations.js";
 import { SLOT_START_TIMES } from "../domain/slots.js";
 import { audit } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { notify } from "../lib/notify.js";
 import { branchEnum, dateString, parse, sectorEnum } from "../lib/validate.js";
-import { currentUser, requireAuth } from "../middleware/auth.js";
+import { currentUser, requirePermission } from "../middleware/auth.js";
 &nbsp;
 export const reservationsRouter = Router();
 export const availabilityRouter = Router();
@@ -376,7 +340,8 @@ const slotTime = z.enum(SLOT_START_TIMES, { error: `startTime must be one of ${S
 const partySizeMessage = `Party size must be between 1 and ${MAX_PARTY_SIZE}`;
 const partySize = z.number().int().min(1, partySizeMessage).max(MAX_PARTY_SIZE, partySizeMessage);
 &nbsp;
-const createSchema = z.object({
+/** Shared with the assistant's booking route, so both apply identical rules and messages. */
+export const createSchema = z.object({
   branch: branchEnum,
   sector: sectorEnum,
   date: dateString,
@@ -398,7 +363,7 @@ availabilityRouter.get("/", async (req, res) =&gt; {
   res.json(await availability(branch, sector, date, SLOT_START_TIMES));
 });
 &nbsp;
-reservationsRouter.use(requireAuth);
+reservationsRouter.use(requirePermission("reservations:own"));
 &nbsp;
 /** Loads a reservation owned by the current user; another user's ID is a 404 (no IDOR probing). */
 async function findOwned(userId: string, id: string) {
@@ -428,30 +393,11 @@ reservationsRouter.get("/:id", async (req, res) =&gt; {
 reservationsRouter.post("/", async (req, res) =&gt; {
   const user = currentUser(req);
   const input = parse(createSchema, req.body);
-  const { slotStart, slotEnd } = resolveSlot(input.date, input.startTime);
+  const reservation = await bookReservation(input, { userId: user.id, createdById: user.id, source: "APP" });
 &nbsp;
-  const reservation = await withAllocation(async (tx, allocate) =&gt; {
-    const tableIds = await allocate(tx, input.branch, input.sector, slotStart, input.partySize);
-    return tx.reservation.create({
-      data: {
-        code: generateReservationCode(),
-        userId: user.id,
-        branch: input.branch,
-        sector: input.sector,
-        slotStart,
-        slotEnd,
-        partySize: input.partySize,
-        specialRequests: input.specialRequests,
-        tableIds,
-        allocations: { create: tableIds.map((tableId) =&gt; ({ tableId, slotStart })) },
-      },
-      select: reservationSelect,
-    });
-  });
-&nbsp;
-  await audit(req, "CREATE_RESERVATION", { resourceId: reservation.id });
+  await audit(req, "CREATE_RESERVATION", { resourceId: reservation.id, metadata: { source: "APP" } });
   const { email } = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { email: true } });
-  await notify(email, "Booking confirmed", `Reservation ${reservation.id} at ${slotStart.toISOString()}`);
+  await notify(email, "Booking confirmed", `Reservation ${reservation.code} at ${reservation.slotStart.toISOString()}`);
   res.status(201).json(reservation);
 });
 &nbsp;
@@ -511,7 +457,7 @@ reservationsRouter.delete("/:id", async (req, res) =&gt; {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-03T05:40:09.460Z
+                at 2026-11-03T07:35:56.972Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

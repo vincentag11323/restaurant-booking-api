@@ -8,11 +8,11 @@ import { audit, securityAlert } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { notFound } from "../lib/errors.js";
 import { branchEnum, dateString, parse, sectorEnum, statusEnum } from "../lib/validate.js";
-import { requireAuth, requireRole } from "../middleware/auth.js";
+import { requirePermission } from "../middleware/auth.js";
 
 /** Read-only by design (PRD v1): only GET routes live here. */
 export const adminRouter = Router();
-adminRouter.use(requireAuth, requireRole("ADMIN"));
+adminRouter.use(requirePermission("admin:read"));
 
 const EXPORT_ROW_CAP = 10_000;
 const BULK_EXPORT_ALERT_ROWS = 1_000;
@@ -21,6 +21,7 @@ const filtersSchema = z.object({
   branch: branchEnum.optional(),
   sector: sectorEnum.optional(),
   status: statusEnum.optional(),
+  source: z.enum(["APP", "AGENT"]).optional(),
   from: dateString.optional(),
   to: dateString.optional(),
   q: z.string().trim().min(1).max(100).optional(),
@@ -38,8 +39,8 @@ const adminReservationSelect = {
 
 type Filters = z.infer<typeof filtersSchema>;
 
-function buildWhere({ branch, sector, status, from, to, q }: Filters): Prisma.ReservationWhereInput {
-  const where: Prisma.ReservationWhereInput = { branch, sector, status };
+function buildWhere({ branch, sector, status, source, from, to, q }: Filters): Prisma.ReservationWhereInput {
+  const where: Prisma.ReservationWhereInput = { branch, sector, status, source };
   if (from || to) {
     const range = localDayRange(from ?? "1970-01-01", to ?? "9999-12-30", config.utcOffset);
     where.slotStart = { gte: range.start, lt: range.end };
@@ -79,8 +80,9 @@ adminRouter.get("/stats", async (req, res) => {
   const { start, end } = localDayRange(date, date, config.utcOffset);
   const onDate = { branch, slotStart: { gte: start, lt: end } };
 
-  const [active, cancellations, tablesBySector] = await Promise.all([
+  const [active, agentBookings, cancellations, tablesBySector] = await Promise.all([
     prisma.reservation.aggregate({ where: { ...onDate, status: { not: "CANCELLED" } }, _count: true, _sum: { partySize: true } }),
+    prisma.reservation.count({ where: { ...onDate, status: { not: "CANCELLED" }, source: "AGENT" } }),
     prisma.reservation.count({ where: { ...onDate, status: "CANCELLED" } }),
     // Enum order: MAIN_HALL, then VIP_WING.
     prisma.diningTable.groupBy({ by: ["sector"], where: { branch }, _count: true, orderBy: { sector: "asc" } }),
@@ -97,6 +99,7 @@ adminRouter.get("/stats", async (req, res) => {
   res.json({
     date,
     totalBookings: active._count,
+    agentBookings,
     totalCovers: active._sum.partySize ?? 0,
     cancellations,
     utilization,
@@ -114,7 +117,7 @@ adminRouter.get("/reservations", async (req, res) => {
 
 const CSV_COLUMNS = [
   "code", "status", "branch", "sector", "slotStart", "slotEnd", "partySize", "tableIds",
-  "customerName", "customerEmail", "customerPhone", "specialRequests", "createdAt", "cancelledAt",
+  "customerName", "customerEmail", "customerPhone", "specialRequests", "createdAt", "cancelledAt", "source",
 ] as const;
 
 function csvCell(value: unknown): string {
@@ -129,7 +132,7 @@ function toCsv(rows: AdminRow[]): string {
   const lines = rows.map((r) =>
     [
       r.code, r.status, r.branch, r.sector, r.slotStart, r.slotEnd, r.partySize, r.tableIds,
-      r.user.name, r.user.email, r.user.phone, r.specialRequests, r.createdAt, r.cancelledAt,
+      r.user.name, r.user.email, r.user.phone, r.specialRequests, r.createdAt, r.cancelledAt, r.source,
     ].map(csvCell).join(","),
   );
   return [CSV_COLUMNS.join(","), ...lines].join("\n") + "\n";

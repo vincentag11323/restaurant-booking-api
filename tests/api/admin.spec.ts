@@ -33,6 +33,7 @@ test.describe("admin booking log", () => {
     expect(stats).toEqual({
       date,
       totalBookings: 2,
+      agentBookings: 0,
       totalCovers: 26,
       cancellations: 1,
       utilization: [
@@ -65,7 +66,7 @@ test.describe("admin booking log", () => {
     expect(csv.headers()["content-type"]).toContain("text/csv");
     expect(csv.headers()["content-disposition"]).toContain("attachment");
     const lines = (await csv.text()).trim().split("\n");
-    expect(lines[0]).toBe("code,status,branch,sector,slotStart,slotEnd,partySize,tableIds,customerName,customerEmail,customerPhone,specialRequests,createdAt,cancelledAt");
+    expect(lines[0]).toBe("code,status,branch,sector,slotStart,slotEnd,partySize,tableIds,customerName,customerEmail,customerPhone,specialRequests,createdAt,cancelledAt,source");
     expect(lines).toHaveLength(4);
 
     const json = await request.get(`/api/admin/reservations/export?format=json&from=${date}&to=${date}`, { headers: admin.headers });

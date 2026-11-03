@@ -22,6 +22,8 @@ export default async function globalSetup() {
     AUTH_RATE_LIMIT: "10000",
     ADMIN_EMAIL: "admin@resortos.test",
     ADMIN_PASSWORD: "Admin12345!",
+    AGENT_EMAIL: "assistant@resortos.internal",
+    AGENT_PASSWORD: "Agent12345!",
   });
   await run("npx prisma migrate deploy", { env: process.env });
   await run("npx tsx prisma/seed.ts", { env: process.env });

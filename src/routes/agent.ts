@@ -1,0 +1,75 @@
+import { Router } from "express";
+import rateLimit from "express-rate-limit";
+import { z } from "zod";
+import { bookReservation, reservationSelect } from "../domain/reservations.js";
+import { audit } from "../lib/audit.js";
+import { prisma } from "../lib/db.js";
+import { badRequest } from "../lib/errors.js";
+import { notify } from "../lib/notify.js";
+import { parse } from "../lib/validate.js";
+import { currentUser, requirePermission } from "../middleware/auth.js";
+import { createSchema } from "./reservations.js";
+
+/** Routes for the AI booking assistant (role AGENT). Thin on purpose: booking reuses bookReservation(). */
+export const agentRouter = Router();
+
+const MAX_UPCOMING_ASSISTANT_BOOKINGS = 2;
+
+const emailSchema = z.email().max(254).transform((e) => e.toLowerCase());
+
+const onBehalfSchema = createSchema.extend({
+  email: emailSchema,
+  phone: z.string().trim().regex(/^\+?[0-9 -]{6,20}$/, "Invalid phone number").optional(),
+  clientIp: z.string().max(64).optional(),
+});
+
+const idempotencyKeySchema = z.string().min(8).max(200).optional();
+
+function upcomingAssistantBookings(userId: string) {
+  return prisma.reservation.count({
+    where: { userId, source: "AGENT", status: "CONFIRMED", slotStart: { gt: new Date() } },
+  });
+}
+
+agentRouter.post("/reservations", requirePermission("reservation:create_on_behalf"), async (req, res) => {
+  const agent = currentUser(req);
+  const { email, phone, clientIp, ...booking } = parse(onBehalfSchema, req.body);
+  const idempotencyKey = parse(idempotencyKeySchema, req.get("idempotency-key"));
+
+  if (idempotencyKey) {
+    const earlier = await prisma.reservation.findUnique({ where: { idempotencyKey }, select: { ...reservationSelect, user: { select: { email: true } } } });
+    if (earlier) {
+      if (earlier.user.email !== email) throw badRequest("Idempotency-Key was already used for another booking");
+      const { user: _user, ...reservation } = earlier;
+      res.status(200).json(reservation);
+      return;
+    }
+  }
+
+  // Password-less guest account: sign-up with this email claims it later (agent_spec.md D1).
+  const guest = await prisma.user.upsert({
+    where: { email },
+    update: {},
+    create: { email, phone, name: email.split("@")[0], passwordHash: null },
+  });
+  if (guest.role !== "USER") throw badRequest("This email can't be booked through the assistant");
+  if ((await upcomingAssistantBookings(guest.id)) >= MAX_UPCOMING_ASSISTANT_BOOKINGS) {
+    throw badRequest(`This email already has ${MAX_UPCOMING_ASSISTANT_BOOKINGS} upcoming assistant bookings. Sign in to manage them.`);
+  }
+
+  const reservation = await bookReservation(booking, { userId: guest.id, createdById: agent.id, source: "AGENT", idempotencyKey });
+  await audit(req, "CREATE_RESERVATION", { resourceId: reservation.id, metadata: { source: "AGENT", onBehalfOf: guest.id, clientIp } });
+  await notify(email, "Booking confirmed", `Reservation ${reservation.code} at ${reservation.slotStart.toISOString()}`);
+  res.status(201).json(reservation);
+});
+
+const lookupLimiter = rateLimit({ windowMs: 60_000, limit: 60, message: { message: "Too many lookups. Please slow down." } });
+
+/** One guest per request, exact email, minimal answer. Listing and searching are admin-only. */
+agentRouter.post("/guests/lookup", requirePermission("guest:read_one"), lookupLimiter, async (req, res) => {
+  const { email } = parse(z.object({ email: emailSchema }), req.body);
+  const guest = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true } });
+  const exists = guest?.role === "USER";
+  await audit(req, "VIEW_GUEST", { resourceId: guest?.id, metadata: { found: exists } });
+  res.json({ exists, upcomingAssistantBookings: exists ? await upcomingAssistantBookings(guest.id) : 0 });
+});

@@ -3,6 +3,7 @@ import { type APIRequestContext, expect } from "@playwright/test";
 import { todayLocal } from "../../src/domain/slots.js";
 
 export const ADMIN = { email: "admin@resortos.test", password: "Admin12345!" };
+export const AGENT = { email: "assistant@resortos.internal", password: "Agent12345!" };
 
 export async function registerGuest(request: APIRequestContext, overrides: Record<string, unknown> = {}) {
   const email = `guest-${randomUUID()}@test.dev`;
@@ -16,6 +17,13 @@ export async function registerGuest(request: APIRequestContext, overrides: Recor
 
 export async function loginAdmin(request: APIRequestContext) {
   const res = await request.post("/api/auth/login", { data: ADMIN });
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  return { headers: { Authorization: `Bearer ${body.accessToken}` } };
+}
+
+export async function loginAgent(request: APIRequestContext) {
+  const res = await request.post("/api/auth/login", { data: AGENT });
   expect(res.status()).toBe(200);
   const body = await res.json();
   return { headers: { Authorization: `Bearer ${body.accessToken}` } };

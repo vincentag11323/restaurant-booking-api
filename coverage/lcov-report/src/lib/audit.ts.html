@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>51/51</span>
+                <span class='fraction'>56/56</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>51/51</span>
+                <span class='fraction'>56/56</span>
             </div>
         
             
@@ -114,7 +114,12 @@
 <a name='L49'></a><a href='#L49'>49</a>
 <a name='L50'></a><a href='#L50'>50</a>
 <a name='L51'></a><a href='#L51'>51</a>
-<a name='L52'></a><a href='#L52'>52</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -130,21 +135,22 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
+<span class="cline-any cline-yes">77x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">2x</span>
@@ -156,15 +162,19 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">14x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">14x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { Request } from "express";
 import { prisma } from "./db.js";
 &nbsp;
@@ -178,7 +188,8 @@ export type AuditAction =
   | "CANCEL_RESERVATION"
   | "VIEW_RESERVATION_DETAIL"
   | "EXPORT_RESERVATIONS"
-  | "SECURITY_ALERT";
+  | "SECURITY_ALERT"
+  | "VIEW_GUEST";
 &nbsp;
 export async function audit(
   req: Request,
@@ -203,6 +214,7 @@ export async function securityAlert(req: Request, reason: string, metadata: Reco
 }
 &nbsp;
 const FAILED_LOGIN_THRESHOLD = 10;
+const FAILED_LOGIN_REASON = "Repeated failed logins from one IP";
 const FAILED_LOGIN_WINDOW_MS = 5 * 60_000;
 &nbsp;
 /** Raises one alert per window once an IP reaches the failed-login threshold. */
@@ -210,10 +222,13 @@ export async function checkFailedLogins(req: Request) {
   const since = new Date(Date.now() - FAILED_LOGIN_WINDOW_MS);
   const [count, alreadyAlerted] = await Promise.all([
     prisma.auditLog.count({ where: { action: "LOGIN_FAILED", ipAddress: req.ip, timestamp: { gte: since } } }),
-    prisma.auditLog.count({ where: { action: "SECURITY_ALERT", ipAddress: req.ip, timestamp: { gte: since } } }),
+    // Only an earlier failed-login alert suppresses this one; other alerts (e.g. bulk export) from the same IP don't.
+    prisma.auditLog.count({
+      where: { action: "SECURITY_ALERT", ipAddress: req.ip, timestamp: { gte: since }, metadata: { path: ["reason"], equals: FAILED_LOGIN_REASON } },
+    }),
   ]);
   if (count &gt;= FAILED_LOGIN_THRESHOLD &amp;&amp; alreadyAlerted === 0) {
-    await securityAlert(req, "Repeated failed logins from one IP", { ip: req.ip, count });
+    await securityAlert(req, FAILED_LOGIN_REASON, { ip: req.ip, count });
   }
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -223,7 +238,7 @@ export async function checkFailedLogins(req: Request) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-03T05:40:09.460Z
+                at 2026-11-03T07:35:56.972Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

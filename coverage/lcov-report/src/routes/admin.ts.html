@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>161/161</span>
+                <span class='fraction'>164/164</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>161/161</span>
+                <span class='fraction'>164/164</span>
             </div>
         
             
@@ -224,7 +224,11 @@
 <a name='L159'></a><a href='#L159'>159</a>
 <a name='L160'></a><a href='#L160'>160</a>
 <a name='L161'></a><a href='#L161'>161</a>
-<a name='L162'></a><a href='#L162'>162</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -314,6 +318,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
@@ -330,6 +335,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
@@ -343,13 +349,13 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-yes">28x</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-yes">30x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
@@ -395,11 +401,11 @@ import { audit, securityAlert } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { notFound } from "../lib/errors.js";
 import { branchEnum, dateString, parse, sectorEnum, statusEnum } from "../lib/validate.js";
-import { requireAuth, requireRole } from "../middleware/auth.js";
+import { requirePermission } from "../middleware/auth.js";
 &nbsp;
 /** Read-only by design (PRD v1): only GET routes live here. */
 export const adminRouter = Router();
-adminRouter.use(requireAuth, requireRole("ADMIN"));
+adminRouter.use(requirePermission("admin:read"));
 &nbsp;
 const EXPORT_ROW_CAP = 10_000;
 const BULK_EXPORT_ALERT_ROWS = 1_000;
@@ -408,6 +414,7 @@ const filtersSchema = z.object({
   branch: branchEnum.optional(),
   sector: sectorEnum.optional(),
   status: statusEnum.optional(),
+  source: z.enum(["APP", "AGENT"]).optional(),
   from: dateString.optional(),
   to: dateString.optional(),
   q: z.string().trim().min(1).max(100).optional(),
@@ -425,8 +432,8 @@ const adminReservationSelect = {
 &nbsp;
 type Filters = z.infer&lt;typeof filtersSchema&gt;;
 &nbsp;
-function buildWhere({ branch, sector, status, from, to, q }: Filters): Prisma.ReservationWhereInput {
-  const where: Prisma.ReservationWhereInput = { branch, sector, status };
+function buildWhere({ branch, sector, status, source, from, to, q }: Filters): Prisma.ReservationWhereInput {
+  const where: Prisma.ReservationWhereInput = { branch, sector, status, source };
   if (from || to) {
     const range = localDayRange(from ?? "1970-01-01", to ?? "9999-12-30", config.utcOffset);
     where.slotStart = { gte: range.start, lt: range.end };
@@ -466,8 +473,9 @@ adminRouter.get("/stats", async (req, res) =&gt; {
   const { start, end } = localDayRange(date, date, config.utcOffset);
   const onDate = { branch, slotStart: { gte: start, lt: end } };
 &nbsp;
-  const [active, cancellations, tablesBySector] = await Promise.all([
+  const [active, agentBookings, cancellations, tablesBySector] = await Promise.all([
     prisma.reservation.aggregate({ where: { ...onDate, status: { not: "CANCELLED" } }, _count: true, _sum: { partySize: true } }),
+    prisma.reservation.count({ where: { ...onDate, status: { not: "CANCELLED" }, source: "AGENT" } }),
     prisma.reservation.count({ where: { ...onDate, status: "CANCELLED" } }),
     // Enum order: MAIN_HALL, then VIP_WING.
     prisma.diningTable.groupBy({ by: ["sector"], where: { branch }, _count: true, orderBy: { sector: "asc" } }),
@@ -484,6 +492,7 @@ adminRouter.get("/stats", async (req, res) =&gt; {
   res.json({
     date,
     totalBookings: active._count,
+    agentBookings,
     totalCovers: active._sum.partySize ?? 0,
     cancellations,
     utilization,
@@ -501,7 +510,7 @@ adminRouter.get("/reservations", async (req, res) =&gt; {
 &nbsp;
 const CSV_COLUMNS = [
   "code", "status", "branch", "sector", "slotStart", "slotEnd", "partySize", "tableIds",
-  "customerName", "customerEmail", "customerPhone", "specialRequests", "createdAt", "cancelledAt",
+  "customerName", "customerEmail", "customerPhone", "specialRequests", "createdAt", "cancelledAt", "source",
 ] as const;
 &nbsp;
 function csvCell(value: unknown): string {
@@ -516,7 +525,7 @@ function toCsv(rows: AdminRow[]): string {
   const lines = rows.map((r) =&gt;
     [
       r.code, r.status, r.branch, r.sector, r.slotStart, r.slotEnd, r.partySize, r.tableIds,
-      r.user.name, r.user.email, r.user.phone, r.specialRequests, r.createdAt, r.cancelledAt,
+      r.user.name, r.user.email, r.user.phone, r.specialRequests, r.createdAt, r.cancelledAt, r.source,
     ].map(csvCell).join(","),
   );
   return [CSV_COLUMNS.join(","), ...lines].join("\n") + "\n";
@@ -553,7 +562,7 @@ adminRouter.get("/reservations/:id", async (req, res) =&gt; {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-03T05:40:09.460Z
+                at 2026-11-03T07:35:56.972Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

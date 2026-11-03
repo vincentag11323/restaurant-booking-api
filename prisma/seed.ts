@@ -48,13 +48,17 @@ async function main() {
     await prisma.menuItem.upsert({ where: { name: item.name }, update: item, create: item });
   }
 
-  const email = process.env.ADMIN_EMAIL?.toLowerCase();
-  const password = process.env.ADMIN_PASSWORD;
-  if (email && password) {
+  const accounts = [
+    { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD, name: "Restaurant Admin", role: "ADMIN" as const },
+    // The AI booking assistant signs in as this account (role AGENT, agent_spec.md §5.5).
+    { email: process.env.AGENT_EMAIL, password: process.env.AGENT_PASSWORD, name: "AI booking assistant", role: "AGENT" as const },
+  ];
+  for (const { email, password, name, role } of accounts) {
+    if (!email || !password) continue;
     await prisma.user.upsert({
-      where: { email },
+      where: { email: email.toLowerCase() },
       update: {},
-      create: { email, name: "Restaurant Admin", role: "ADMIN", passwordHash: await bcrypt.hash(password, 12) },
+      create: { email: email.toLowerCase(), name, role, passwordHash: await bcrypt.hash(password, 12) },
     });
   }
 }

@@ -14,6 +14,8 @@ export const TEST_ENV = {
   AUTH_RATE_LIMIT: "10000",
   ADMIN_EMAIL: "admin@resortos.test",
   ADMIN_PASSWORD: "Admin12345!",
+  AGENT_EMAIL: "assistant@resortos.internal",
+  AGENT_PASSWORD: "Agent12345!",
   RESTAURANT_UTC_OFFSET: "+07:00",
   CORS_ORIGIN: "http://localhost:5173",
 };

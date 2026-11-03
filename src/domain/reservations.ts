@@ -13,6 +13,7 @@ type Tx = Prisma.TransactionClient;
 export const reservationSelect = {
   id: true,
   code: true,
+  source: true,
   branch: true,
   sector: true,
   slotStart: true,
@@ -75,6 +76,44 @@ export async function withAllocation<T>(fn: (tx: Tx, allocate: typeof allocateTa
     }
     throw err;
   }
+}
+
+export interface BookingInput {
+  branch: Branch;
+  sector: Sector;
+  date: string;
+  startTime: SlotStartTime;
+  partySize: number;
+  specialRequests?: string;
+}
+
+/** The one booking code path, shared by guests (app) and the assistant (on a guest's behalf). */
+export function bookReservation(
+  input: BookingInput,
+  who: { userId: string; createdById: string; source: "APP" | "AGENT"; idempotencyKey?: string },
+) {
+  const { slotStart, slotEnd } = resolveSlot(input.date, input.startTime);
+  return withAllocation(async (tx, allocate) => {
+    const tableIds = await allocate(tx, input.branch, input.sector, slotStart, input.partySize);
+    return tx.reservation.create({
+      data: {
+        code: generateReservationCode(),
+        userId: who.userId,
+        createdById: who.createdById,
+        source: who.source,
+        idempotencyKey: who.idempotencyKey,
+        branch: input.branch,
+        sector: input.sector,
+        slotStart,
+        slotEnd,
+        partySize: input.partySize,
+        specialRequests: input.specialRequests,
+        tableIds,
+        allocations: { create: tableIds.map((tableId) => ({ tableId, slotStart })) },
+      },
+      select: reservationSelect,
+    });
+  });
 }
 
 /** Remaining tables/rooms per slot for a branch, sector and date. */

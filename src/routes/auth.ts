@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { type Response, Router } from "express";
 import { z } from "zod";
 import { config } from "../config.js";
+import type { Role } from "../generated/prisma/enums.js";
 import { audit, checkFailedLogins } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { HttpError, badRequest } from "../lib/errors.js";
@@ -28,7 +29,7 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-function issueTokens(res: Response, user: { id: string; role: "USER" | "ADMIN" }) {
+function issueTokens(res: Response, user: { id: string; role: Role }) {
   res.cookie(REFRESH_COOKIE, signRefreshToken(user.id), {
     httpOnly: true,
     sameSite: "lax",
@@ -41,26 +42,25 @@ function issueTokens(res: Response, user: { id: string; role: "USER" | "ADMIN" }
 
 authRouter.post("/register", async (req, res) => {
   const input = parse(registerSchema, req.body);
-  if (await prisma.user.findUnique({ where: { email: input.email } })) {
-    throw badRequest("Email is already registered");
-  }
-  const user = await prisma.user.create({
-    data: {
-      email: input.email,
-      name: input.name,
-      phone: input.phone,
-      passwordHash: await bcrypt.hash(input.password, BCRYPT_COST),
-    },
-  });
-  await audit(req, "REGISTER", { actorId: user.id, resourceId: user.id });
+  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  // A password-less guest account (created by the assistant) is claimed by signing up with its email.
+  const claimable = existing?.role === "USER" && existing.passwordHash === null;
+  if (existing && !claimable) throw badRequest("Email is already registered");
+
+  const data = { name: input.name, phone: input.phone, passwordHash: await bcrypt.hash(input.password, BCRYPT_COST) };
+  const user = claimable
+    ? await prisma.user.update({ where: { id: existing.id }, data })
+    : await prisma.user.create({ data: { ...data, email: input.email } });
+  await audit(req, "REGISTER", { actorId: user.id, resourceId: user.id, metadata: { claimedGuestAccount: claimable } });
   res.status(201).json({ accessToken: issueTokens(res, user), user: publicUser(user) });
 });
 
 authRouter.post("/login", async (req, res) => {
   const input = parse(loginSchema, req.body);
   const user = await prisma.user.findUnique({ where: { email: input.email } });
+  // Unknown email, unclaimed guest account and wrong password all take the same time and give the same answer.
   const passwordOk = await bcrypt.compare(input.password, user?.passwordHash ?? DUMMY_HASH);
-  if (!user || !passwordOk) {
+  if (!user?.passwordHash || !passwordOk) {
     await audit(req, "LOGIN_FAILED", { actorId: null, metadata: { email: input.email } });
     await checkFailedLogins(req);
     throw new HttpError(401, "Invalid email or password");

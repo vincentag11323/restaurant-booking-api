@@ -4,11 +4,11 @@ import type { User } from "../generated/prisma/client.js";
 import { audit } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { parse } from "../lib/validate.js";
-import { currentUser, requireAuth } from "../middleware/auth.js";
+import { currentUser, requirePermission } from "../middleware/auth.js";
 
 export const profileRouter = Router();
 
-export function publicUser(user: User) {
+export function publicUser(user: Pick<User, "id" | "email" | "name" | "phone" | "allergies" | "role">) {
   return { id: user.id, email: user.email, name: user.name, phone: user.phone, allergies: user.allergies, role: user.role };
 }
 
@@ -18,12 +18,12 @@ const updateProfileSchema = z.object({
   allergies: z.array(z.string().trim().toLowerCase().min(1).max(40)).max(20).optional(),
 });
 
-profileRouter.get("/", requireAuth, async (req, res) => {
+profileRouter.get("/", requirePermission("profile:own"), async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: currentUser(req).id } });
   res.json(publicUser(user));
 });
 
-profileRouter.patch("/", requireAuth, async (req, res) => {
+profileRouter.patch("/", requirePermission("profile:own"), async (req, res) => {
   const input = parse(updateProfileSchema, req.body);
   const user = await prisma.user.update({ where: { id: currentUser(req).id }, data: input });
   await audit(req, "UPDATE_PROFILE", { resourceId: user.id, metadata: { fields: Object.keys(input) } });

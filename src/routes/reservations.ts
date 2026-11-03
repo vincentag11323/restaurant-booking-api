@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
 import { MAX_PARTY_SIZE } from "../domain/allocation.js";
-import { availability, claimConfirmed, generateReservationCode, reservationSelect, resolveSlot, withAllocation } from "../domain/reservations.js";
+import { availability, bookReservation, claimConfirmed, reservationSelect, resolveSlot, withAllocation } from "../domain/reservations.js";
 import { SLOT_START_TIMES } from "../domain/slots.js";
 import { audit } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { notify } from "../lib/notify.js";
 import { branchEnum, dateString, parse, sectorEnum } from "../lib/validate.js";
-import { currentUser, requireAuth } from "../middleware/auth.js";
+import { currentUser, requirePermission } from "../middleware/auth.js";
 
 export const reservationsRouter = Router();
 export const availabilityRouter = Router();
@@ -17,7 +17,8 @@ const slotTime = z.enum(SLOT_START_TIMES, { error: `startTime must be one of ${S
 const partySizeMessage = `Party size must be between 1 and ${MAX_PARTY_SIZE}`;
 const partySize = z.number().int().min(1, partySizeMessage).max(MAX_PARTY_SIZE, partySizeMessage);
 
-const createSchema = z.object({
+/** Shared with the assistant's booking route, so both apply identical rules and messages. */
+export const createSchema = z.object({
   branch: branchEnum,
   sector: sectorEnum,
   date: dateString,
@@ -39,7 +40,7 @@ availabilityRouter.get("/", async (req, res) => {
   res.json(await availability(branch, sector, date, SLOT_START_TIMES));
 });
 
-reservationsRouter.use(requireAuth);
+reservationsRouter.use(requirePermission("reservations:own"));
 
 /** Loads a reservation owned by the current user; another user's ID is a 404 (no IDOR probing). */
 async function findOwned(userId: string, id: string) {
@@ -69,30 +70,11 @@ reservationsRouter.get("/:id", async (req, res) => {
 reservationsRouter.post("/", async (req, res) => {
   const user = currentUser(req);
   const input = parse(createSchema, req.body);
-  const { slotStart, slotEnd } = resolveSlot(input.date, input.startTime);
+  const reservation = await bookReservation(input, { userId: user.id, createdById: user.id, source: "APP" });
 
-  const reservation = await withAllocation(async (tx, allocate) => {
-    const tableIds = await allocate(tx, input.branch, input.sector, slotStart, input.partySize);
-    return tx.reservation.create({
-      data: {
-        code: generateReservationCode(),
-        userId: user.id,
-        branch: input.branch,
-        sector: input.sector,
-        slotStart,
-        slotEnd,
-        partySize: input.partySize,
-        specialRequests: input.specialRequests,
-        tableIds,
-        allocations: { create: tableIds.map((tableId) => ({ tableId, slotStart })) },
-      },
-      select: reservationSelect,
-    });
-  });
-
-  await audit(req, "CREATE_RESERVATION", { resourceId: reservation.id });
+  await audit(req, "CREATE_RESERVATION", { resourceId: reservation.id, metadata: { source: "APP" } });
   const { email } = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { email: true } });
-  await notify(email, "Booking confirmed", `Reservation ${reservation.id} at ${slotStart.toISOString()}`);
+  await notify(email, "Booking confirmed", `Reservation ${reservation.code} at ${reservation.slotStart.toISOString()}`);
   res.status(201).json(reservation);
 });
 

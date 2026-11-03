@@ -10,6 +10,13 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  /// The AI booking assistant's service account. May only book on a guest's behalf and look up one guest by email.
+  AGENT
+}
+
+enum BookingSource {
+  APP
+  AGENT
 }
 
 enum Branch {
@@ -36,15 +43,17 @@ enum MenuType {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  passwordHash String
-  name         String
-  phone        String?
-  allergies    String[]
-  role         Role          @default(USER)
-  createdAt    DateTime      @default(now()) @db.Timestamptz
-  reservations Reservation[]
+  id                  String        @id @default(cuid())
+  email               String        @unique
+  /// Null for a guest account created by the assistant; sign-up sets it (claims the account).
+  passwordHash        String?
+  name                String
+  phone               String?
+  allergies           String[]
+  role                Role          @default(USER)
+  createdAt           DateTime      @default(now()) @db.Timestamptz
+  reservations        Reservation[]
+  createdReservations Reservation[] @relation("CreatedBy")
 }
 
 /// A two-seat table (MAIN_HALL) or a private room (VIP_WING). Seeded, never edited by the app.
@@ -64,6 +73,12 @@ model Reservation {
   code            String             @unique
   userId          String
   user            User               @relation(fields: [userId], references: [id])
+  source          BookingSource      @default(APP)
+  /// Who made the booking: the guest (app) or the assistant's service account.
+  createdById     String?
+  createdBy       User?              @relation("CreatedBy", fields: [createdById], references: [id])
+  /// Retrying the same assistant confirmation returns the same booking instead of a second one.
+  idempotencyKey  String?            @unique
   branch          Branch
   sector          Sector
   slotStart       DateTime           @db.Timestamptz
@@ -81,6 +96,7 @@ model Reservation {
   @@index([userId])
   @@index([branch, slotStart])
   @@index([status])
+  @@index([source])
 }
 
 /// Live table locks. Rows are deleted on cancel/reschedule, which frees the table.

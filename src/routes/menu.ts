@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { parse } from "../lib/validate.js";
-import { currentUser, requireAuth } from "../middleware/auth.js";
+import { currentUser, requirePermission } from "../middleware/auth.js";
 
 export const menuRouter = Router();
 
@@ -14,7 +14,7 @@ menuRouter.get("/", async (req, res) => {
 });
 
 /** v1 "recommendations": allergy-safe dishes, chef's picks first. */
-menuRouter.get("/recommendations", requireAuth, async (req, res) => {
+menuRouter.get("/recommendations", requirePermission("menu:recommendations"), async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: currentUser(req).id } });
   const allergies = new Set(user.allergies.map((a) => a.toLowerCase()));
   const items = await prisma.menuItem.findMany({ orderBy: [{ chefPick: "desc" }, { name: "asc" }] });
