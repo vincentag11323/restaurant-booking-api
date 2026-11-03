@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "@jest/globals";
 import { pickTables, unitsNeeded } from "../../src/domain/allocation.js";
-import { generateReservationCode, resolveSlot, withAllocation } from "../../src/domain/reservations.js";
+import { claimConfirmed, generateReservationCode, resolveSlot, withAllocation } from "../../src/domain/reservations.js";
 import { computeSlot, isBookable, localDayRange, todayLocal } from "../../src/domain/slots.js";
 import { prisma } from "../../src/lib/db.js";
 import { HttpError } from "../../src/lib/errors.js";
@@ -69,5 +69,26 @@ describe("reservation helpers", () => {
     const entry = await prisma.auditLog.create({ data: { action: "JEST_PROBE" } });
     await expect(prisma.auditLog.update({ where: { id: entry.id }, data: { action: "TAMPERED" } })).rejects.toThrow(/append-only/);
     await expect(prisma.auditLog.delete({ where: { id: entry.id } })).rejects.toThrow(/append-only/);
+  });
+});
+
+describe("transaction guards", () => {
+  it("rethrows Prisma errors other than unique violations", async () => {
+    const missing = withAllocation((tx) => tx.reservation.update({ where: { id: "does-not-exist" }, data: { partySize: 2 } }));
+    await expect(missing).rejects.toMatchObject({ code: "P2025" });
+  });
+
+  it("claimConfirmed refuses a booking another request already cancelled", async () => {
+    const user = await prisma.user.create({ data: { email: `claim-${Date.now()}@test.dev`, passwordHash: "x", name: "Claim" } });
+    const cancelled = await prisma.reservation.create({
+      data: { code: generateReservationCode(), userId: user.id, branch: "BRANCH_1", sector: "MAIN_HALL", status: "CANCELLED", slotStart: new Date(), slotEnd: new Date(), partySize: 2, tableIds: [] },
+    });
+    await expect(prisma.$transaction((tx) => claimConfirmed(tx, cancelled.id))).rejects.toEqual(new HttpError(400, "Only confirmed reservations can be changed"));
+  });
+});
+
+describe("table picking edge cases", () => {
+  it("returns null when every table is taken", () => {
+    expect(pickTables(["B1-VIP-1"], new Set(["B1-VIP-1"]), 1)).toBeNull();
   });
 });

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">67.74% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>21/31</span>
+                <span class='fraction'>31/31</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">67.74% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>21/31</span>
+                <span class='fraction'>31/31</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line medium'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -105,8 +105,8 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-yes">30x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -115,16 +115,16 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Router } from "express";
 import { z } from "zod";
 import type { User } from "../generated/prisma/client.js";
@@ -135,9 +135,9 @@ import { currentUser, requireAuth } from "../middleware/auth.js";
 &nbsp;
 export const profileRouter = Router();
 &nbsp;
-export <span class="fstat-no" title="function not covered" >function publicUser(user: User) {</span>
-<span class="cstat-no" title="statement not covered" >  return { id: user.id, email: user.email, name: user.name, phone: user.phone, allergies: user.allergies, role: user.role };</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function publicUser(user: User) {
+  return { id: user.id, email: user.email, name: user.name, phone: user.phone, allergies: user.allergies, role: user.role };
+}
 &nbsp;
 const updateProfileSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
@@ -146,16 +146,16 @@ const updateProfileSchema = z.object({
 });
 &nbsp;
 profileRouter.get("/", requireAuth, async (req, res) =&gt; {
-<span class="cstat-no" title="statement not covered" >  const user = await prisma.user.findUniqueOrThrow({ where: { id: currentUser(req).id } });</span>
-<span class="cstat-no" title="statement not covered" >  res.json(publicUser(user));</span>
-<span class="cstat-no" title="statement not covered" >});</span>
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: currentUser(req).id } });
+  res.json(publicUser(user));
+});
 &nbsp;
 profileRouter.patch("/", requireAuth, async (req, res) =&gt; {
-<span class="cstat-no" title="statement not covered" >  const input = parse(updateProfileSchema, req.body);</span>
-<span class="cstat-no" title="statement not covered" >  const user = await prisma.user.update({ where: { id: currentUser(req).id }, data: input });</span>
-<span class="cstat-no" title="statement not covered" >  await audit(req, "UPDATE_PROFILE", { resourceId: user.id, metadata: { fields: Object.keys(input) } });</span>
-<span class="cstat-no" title="statement not covered" >  res.json(publicUser(user));</span>
-<span class="cstat-no" title="statement not covered" >});</span>
+  const input = parse(updateProfileSchema, req.body);
+  const user = await prisma.user.update({ where: { id: currentUser(req).id }, data: input });
+  await audit(req, "UPDATE_PROFILE", { resourceId: user.id, metadata: { fields: Object.keys(input) } });
+  res.json(publicUser(user));
+});
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -163,7 +163,7 @@ profileRouter.patch("/", requireAuth, async (req, res) =&gt; {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-03T05:35:25.215Z
+                at 2026-11-03T05:40:09.460Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

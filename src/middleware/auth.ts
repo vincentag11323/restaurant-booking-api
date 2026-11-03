@@ -24,7 +24,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
 
 export function requireRole(role: Role) {
   return (req: Request, _res: Response, next: NextFunction) => {
-    if (req.user?.role !== role) throw new HttpError(403, "Forbidden");
+    if (currentUser(req).role !== role) throw new HttpError(403, "Forbidden");
     next();
   };
 }

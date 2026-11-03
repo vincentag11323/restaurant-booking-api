@@ -7,11 +7,13 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test",
+    "test": "npm run test:e2e && npm run test:jest",
     "db:local": "pglite-server --db=./.pglite --port=5432 --max-connections=10",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:e2e": "playwright test",
+    "test:jest": "jest --coverage"
   },
   "license": "UNLICENSED",
   "type": "module",

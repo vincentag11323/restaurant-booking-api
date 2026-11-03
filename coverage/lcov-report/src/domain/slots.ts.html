@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">48.71% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>19/39</span>
+                <span class='fraction'>39/39</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">48.71% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>19/39</span>
+                <span class='fraction'>39/39</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -111,36 +111,36 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-yes">21x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">20x</span>
+<span class="cline-any cline-yes">20x</span>
+<span class="cline-any cline-yes">20x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">24x</span>
+<span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">25x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/** Fixed 2.5-hour dining blocks, in restaurant local time. */
 export const SLOT_DURATION_MINUTES = 150;
 export const SLOT_START_TIMES = ["11:00", "13:30", "17:00", "19:30"] as const;
@@ -149,37 +149,37 @@ export type SlotStartTime = (typeof SLOT_START_TIMES)[number];
 export const MAX_DAYS_AHEAD = 60;
 &nbsp;
 /** Converts a local date ("2026-12-24") + slot start ("19:30") into a UTC slot window. */
-export <span class="fstat-no" title="function not covered" >function computeSlot(date: string, startTime: SlotStartTime, utcOffset: string) {</span>
-<span class="cstat-no" title="statement not covered" >  const slotStart = new Date(`${date}T${startTime}:00${utcOffset}`);</span>
-<span class="cstat-no" title="statement not covered" >  if (Number.isNaN(slotStart.getTime())) throw new Error(`Invalid date: ${date}`);</span>
-<span class="cstat-no" title="statement not covered" >  const slotEnd = new Date(slotStart.getTime() + SLOT_DURATION_MINUTES * 60_000);</span>
-<span class="cstat-no" title="statement not covered" >  return { slotStart, slotEnd };</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function computeSlot(date: string, startTime: SlotStartTime, utcOffset: string) {
+  const slotStart = new Date(`${date}T${startTime}:00${utcOffset}`);
+  if (Number.isNaN(slotStart.getTime())) throw new Error(`Invalid date: ${date}`);
+  const slotEnd = new Date(slotStart.getTime() + SLOT_DURATION_MINUTES * 60_000);
+  return { slotStart, slotEnd };
+}
 &nbsp;
 /** A slot is bookable if it hasn't started yet and is within the booking window. */
-export <span class="fstat-no" title="function not covered" >function isBookable(slotStart: Date, now: Date = new Date()): boolean {</span>
-<span class="cstat-no" title="statement not covered" >  const latest = now.getTime() + MAX_DAYS_AHEAD * 24 * 60 * 60_000;</span>
-<span class="cstat-no" title="statement not covered" >  return slotStart.getTime() &gt; now.getTime() &amp;&amp; slotStart.getTime() &lt;= latest;</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function isBookable(slotStart: Date, now: Date = new Date()): boolean {
+  const latest = now.getTime() + MAX_DAYS_AHEAD * 24 * 60 * 60_000;
+  return slotStart.getTime() &gt; now.getTime() &amp;&amp; slotStart.getTime() &lt;= latest;
+}
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function offsetMinutes(utcOffset: string): number {</span></span>
-<span class="cstat-no" title="statement not covered" >  const match = /^([+-])(\d{2}):(\d{2})$/.exec(utcOffset);</span>
-<span class="cstat-no" title="statement not covered" >  if (!match) throw new Error(`Invalid UTC offset: ${utcOffset}`);</span>
-<span class="cstat-no" title="statement not covered" >  const minutes = Number(match[2]) * 60 + Number(match[3]);</span>
-<span class="cstat-no" title="statement not covered" >  return match[1] === "-" ? -minutes : minutes;</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+function offsetMinutes(utcOffset: string): number {
+  const match = /^([+-])(\d{2}):(\d{2})$/.exec(utcOffset);
+  if (!match) throw new Error(`Invalid UTC offset: ${utcOffset}`);
+  const minutes = Number(match[2]) * 60 + Number(match[3]);
+  return match[1] === "-" ? -minutes : minutes;
+}
 &nbsp;
 /** Today's date ("YYYY-MM-DD") in restaurant local time. */
-export <span class="fstat-no" title="function not covered" >function todayLocal(utcOffset: string, now: Date = new Date()): string {</span>
-<span class="cstat-no" title="statement not covered" >  return new Date(now.getTime() + offsetMinutes(utcOffset) * 60_000).toISOString().slice(0, 10);</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function todayLocal(utcOffset: string, now: Date = new Date()): string {
+  return new Date(now.getTime() + offsetMinutes(utcOffset) * 60_000).toISOString().slice(0, 10);
+}
 &nbsp;
 /** UTC [start, end) range covering one or more local calendar days. */
-export <span class="fstat-no" title="function not covered" >function localDayRange(fromDate: string, toDate: string, utcOffset: string) {</span>
-<span class="cstat-no" title="statement not covered" >  const start = new Date(`${fromDate}T00:00:00${utcOffset}`);</span>
-<span class="cstat-no" title="statement not covered" >  const end = new Date(new Date(`${toDate}T00:00:00${utcOffset}`).getTime() + 24 * 60 * 60_000);</span>
-<span class="cstat-no" title="statement not covered" >  return { start, end };</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function localDayRange(fromDate: string, toDate: string, utcOffset: string) {
+  const start = new Date(`${fromDate}T00:00:00${utcOffset}`);
+  const end = new Date(new Date(`${toDate}T00:00:00${utcOffset}`).getTime() + 24 * 60 * 60_000);
+  return { start, end };
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -187,7 +187,7 @@ export <span class="fstat-no" title="function not covered" >function localDayRan
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-03T05:35:25.215Z
+                at 2026-11-03T05:40:09.460Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

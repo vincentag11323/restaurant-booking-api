@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">63.63% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>14/22</span>
+                <span class='fraction'>22/22</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">63.63% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>14/22</span>
+                <span class='fraction'>22/22</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line medium'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -93,20 +93,20 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-yes">16x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { Sector } from "../generated/prisma/enums.js";
 &nbsp;
 export const MAX_PARTY_SIZE = 50;
@@ -114,21 +114,21 @@ export const MAIN_HALL_TABLE_SEATS = 2;
 export const VIP_ROOM_SEATS = 13;
 &nbsp;
 /** Main Hall joins ⌈party / 2⌉ two-seat tables; VIP Wing merges ⌈party / 13⌉ rooms (1–4). */
-export <span class="fstat-no" title="function not covered" >function unitsNeeded(sector: Sector, partySize: number): number {</span>
-<span class="cstat-no" title="statement not covered" >  const seatsPerUnit = sector === "MAIN_HALL" ? MAIN_HALL_TABLE_SEATS : VIP_ROOM_SEATS;</span>
-<span class="cstat-no" title="statement not covered" >  return Math.ceil(partySize / seatsPerUnit);</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function unitsNeeded(sector: Sector, partySize: number): number {
+  const seatsPerUnit = sector === "MAIN_HALL" ? MAIN_HALL_TABLE_SEATS : VIP_ROOM_SEATS;
+  return Math.ceil(partySize / seatsPerUnit);
+}
 &nbsp;
 /**
  * Picks the lowest-numbered free tables so joined tables sit next to each other.
  * Returns null when there isn't enough capacity.
  */
-export <span class="fstat-no" title="function not covered" >function pickTables(allTableIds: string[], takenTableIds: Set&lt;string&gt;, needed: number): string[] | null {</span>
-<span class="cstat-no" title="statement not covered" >  const free = allTableIds</span>
-<span class="cstat-no" title="statement not covered" >    .filter((id) =&gt; !takenTableIds.has(id))</span>
-<span class="cstat-no" title="statement not covered" >    .sort((a, b) =&gt; a.localeCompare(b, "en", { numeric: true }));</span>
-<span class="cstat-no" title="statement not covered" >  return free.length &gt;= needed ? free.slice(0, needed) : null;</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function pickTables(allTableIds: string[], takenTableIds: Set&lt;string&gt;, needed: number): string[] | null {
+  const free = allTableIds
+    .filter((id) =&gt; !takenTableIds.has(id))
+    .sort((a, b) =&gt; a.localeCompare(b, "en", { numeric: true }));
+  return free.length &gt;= needed ? free.slice(0, needed) : null;
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -136,7 +136,7 @@ export <span class="fstat-no" title="function not covered" >function pickTables(
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-03T05:35:25.215Z
+                at 2026-11-03T05:40:09.460Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">47.05% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>24/51</span>
+                <span class='fraction'>51/51</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">47.05% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>24/51</span>
+                <span class='fraction'>51/51</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -130,41 +130,41 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-yes">60x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { Request } from "express";
 import { prisma } from "./db.js";
 &nbsp;
@@ -180,42 +180,42 @@ export type AuditAction =
   | "EXPORT_RESERVATIONS"
   | "SECURITY_ALERT";
 &nbsp;
-export <span class="fstat-no" title="function not covered" >async function audit(</span>
-<span class="cstat-no" title="statement not covered" >  req: Request,</span>
-<span class="cstat-no" title="statement not covered" >  action: AuditAction,</span>
-<span class="cstat-no" title="statement not covered" >  opts: { actorId?: string | null; resourceId?: string; metadata?: Record&lt;string, unknown&gt; } = {},</span>
-<span class="cstat-no" title="statement not covered" >) {</span>
-<span class="cstat-no" title="statement not covered" >  await prisma.auditLog.create({</span>
-<span class="cstat-no" title="statement not covered" >    data: {</span>
-<span class="cstat-no" title="statement not covered" >      action,</span>
-<span class="cstat-no" title="statement not covered" >      actorId: opts.actorId ?? req.user?.id ?? null,</span>
-<span class="cstat-no" title="statement not covered" >      resourceId: opts.resourceId,</span>
-<span class="cstat-no" title="statement not covered" >      ipAddress: req.ip,</span>
-<span class="cstat-no" title="statement not covered" >      userAgent: req.get("user-agent"),</span>
-<span class="cstat-no" title="statement not covered" >      metadata: opts.metadata as object | undefined,</span>
-<span class="cstat-no" title="statement not covered" >    },</span>
-<span class="cstat-no" title="statement not covered" >  });</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export async function audit(
+  req: Request,
+  action: AuditAction,
+  opts: { actorId?: string | null; resourceId?: string; metadata?: Record&lt;string, unknown&gt; } = {},
+) {
+  await prisma.auditLog.create({
+    data: {
+      action,
+      actorId: opts.actorId ?? req.user?.id ?? null,
+      resourceId: opts.resourceId,
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+      metadata: opts.metadata as object | undefined,
+    },
+  });
+}
 &nbsp;
-export <span class="fstat-no" title="function not covered" >async function securityAlert(req: Request, reason: string, metadata: Record&lt;string, unknown&gt; = {}) {</span>
-<span class="cstat-no" title="statement not covered" >  console.warn(`[SECURITY_ALERT] ${reason}`, metadata);</span>
-<span class="cstat-no" title="statement not covered" >  await audit(req, "SECURITY_ALERT", { metadata: { reason, ...metadata } });</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export async function securityAlert(req: Request, reason: string, metadata: Record&lt;string, unknown&gt; = {}) {
+  console.warn(`[SECURITY_ALERT] ${reason}`, metadata);
+  await audit(req, "SECURITY_ALERT", { metadata: { reason, ...metadata } });
+}
 &nbsp;
 const FAILED_LOGIN_THRESHOLD = 10;
 const FAILED_LOGIN_WINDOW_MS = 5 * 60_000;
 &nbsp;
 /** Raises one alert per window once an IP reaches the failed-login threshold. */
-export <span class="fstat-no" title="function not covered" >async function checkFailedLogins(req: Request) {</span>
-<span class="cstat-no" title="statement not covered" >  const since = new Date(Date.now() - FAILED_LOGIN_WINDOW_MS);</span>
-<span class="cstat-no" title="statement not covered" >  const [count, alreadyAlerted] = await Promise.all([</span>
-<span class="cstat-no" title="statement not covered" >    prisma.auditLog.count({ where: { action: "LOGIN_FAILED", ipAddress: req.ip, timestamp: { gte: since } } }),</span>
-<span class="cstat-no" title="statement not covered" >    prisma.auditLog.count({ where: { action: "SECURITY_ALERT", ipAddress: req.ip, timestamp: { gte: since } } }),</span>
-<span class="cstat-no" title="statement not covered" >  ]);</span>
-<span class="cstat-no" title="statement not covered" >  if (count &gt;= FAILED_LOGIN_THRESHOLD &amp;&amp; alreadyAlerted === 0) {</span>
-<span class="cstat-no" title="statement not covered" >    await securityAlert(req, "Repeated failed logins from one IP", { ip: req.ip, count });</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export async function checkFailedLogins(req: Request) {
+  const since = new Date(Date.now() - FAILED_LOGIN_WINDOW_MS);
+  const [count, alreadyAlerted] = await Promise.all([
+    prisma.auditLog.count({ where: { action: "LOGIN_FAILED", ipAddress: req.ip, timestamp: { gte: since } } }),
+    prisma.auditLog.count({ where: { action: "SECURITY_ALERT", ipAddress: req.ip, timestamp: { gte: since } } }),
+  ]);
+  if (count &gt;= FAILED_LOGIN_THRESHOLD &amp;&amp; alreadyAlerted === 0) {
+    await securityAlert(req, "Repeated failed logins from one IP", { ip: req.ip, count });
+  }
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -223,7 +223,7 @@ export <span class="fstat-no" title="function not covered" >async function check
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-03T05:35:25.215Z
+                at 2026-11-03T05:40:09.460Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

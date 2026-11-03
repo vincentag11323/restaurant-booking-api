@@ -55,6 +55,11 @@ describe("auth helpers", () => {
     expect(() => currentUser({} as Request)).toThrow(new HttpError(401, "Authentication required"));
   });
 
+  it("requireRole stops the wrong role with 403", () => {
+    const guard = requireRole("ADMIN");
+    expect(() => guard({ user: { id: "g", role: "USER" } } as Request, {} as Response, jest.fn() as unknown as NextFunction)).toThrow(new HttpError(403, "Forbidden"));
+  });
+
   it("requireRole lets the right role through", () => {
     const next = jest.fn();
     requireRole("ADMIN")({ user: { id: "a", role: "ADMIN" } } as Request, {} as Response, next as unknown as NextFunction);

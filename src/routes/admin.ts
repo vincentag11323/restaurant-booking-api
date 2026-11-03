@@ -4,7 +4,6 @@ import { config } from "../config.js";
 import { SLOT_START_TIMES, localDayRange, todayLocal } from "../domain/slots.js";
 import { reservationSelect } from "../domain/reservations.js";
 import type { Prisma } from "../generated/prisma/client.js";
-import type { Sector } from "../generated/prisma/enums.js";
 import { audit, securityAlert } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { notFound } from "../lib/errors.js";
@@ -80,28 +79,27 @@ adminRouter.get("/stats", async (req, res) => {
   const { start, end } = localDayRange(date, date, config.utcOffset);
   const onDate = { branch, slotStart: { gte: start, lt: end } };
 
-  const [active, cancellations, tablesBySector, usedBySector] = await Promise.all([
+  const [active, cancellations, tablesBySector] = await Promise.all([
     prisma.reservation.aggregate({ where: { ...onDate, status: { not: "CANCELLED" } }, _count: true, _sum: { partySize: true } }),
     prisma.reservation.count({ where: { ...onDate, status: "CANCELLED" } }),
-    prisma.diningTable.groupBy({ by: ["sector"], where: { branch }, _count: true }),
-    Promise.all(
-      (["MAIN_HALL", "VIP_WING"] as Sector[]).map(async (sector) => ({
-        sector,
-        used: await prisma.reservationTable.count({ where: { slotStart: { gte: start, lt: end }, table: { sector, branch } } }),
-      })),
-    ),
+    // Enum order: MAIN_HALL, then VIP_WING.
+    prisma.diningTable.groupBy({ by: ["sector"], where: { branch }, _count: true, orderBy: { sector: "asc" } }),
   ]);
+  // Built from the sectors that have tables, so capacity is never zero.
+  const utilization = await Promise.all(
+    tablesBySector.map(async ({ sector, _count: tables }) => {
+      const usedUnits = await prisma.reservationTable.count({ where: { slotStart: { gte: start, lt: end }, table: { sector, branch } } });
+      const capacityUnits = tables * SLOT_START_TIMES.length;
+      return { sector, usedUnits, capacityUnits, rate: usedUnits / capacityUnits };
+    }),
+  );
 
   res.json({
     date,
     totalBookings: active._count,
     totalCovers: active._sum.partySize ?? 0,
     cancellations,
-    utilization: usedBySector.map(({ sector, used }) => {
-      const tables = tablesBySector.find((t) => t.sector === sector)?._count ?? 0;
-      const capacityUnits = tables * SLOT_START_TIMES.length;
-      return { sector, usedUnits: used, capacityUnits, rate: capacityUnits ? used / capacityUnits : 0 };
-    }),
+    utilization,
   });
 });
 
@@ -120,7 +118,7 @@ const CSV_COLUMNS = [
 ] as const;
 
 function csvCell(value: unknown): string {
-  if (value === null || value === undefined) return "";
+  if (value == null) return "";
   const text = value instanceof Date ? value.toISOString() : Array.isArray(value) ? value.join(" ") : String(value);
   // Quote when needed; prefix formula-like cells so spreadsheets don't execute them.
   const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;

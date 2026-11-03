@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">30% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>6/20</span>
+                <span class='fraction'>20/20</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">30% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>6/20</span>
+                <span class='fraction'>20/20</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -87,42 +87,42 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">31x</span>
+<span class="cline-any cline-yes">27x</span>
+<span class="cline-any cline-yes">27x</span>
+<span class="cline-any cline-yes">27x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">31x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { NextFunction, Request, Response } from "express";
 import { HttpError } from "../lib/errors.js";
 &nbsp;
-export <span class="fstat-no" title="function not covered" >function notFoundRoute(_req: Request, res: Response) {</span>
-<span class="cstat-no" title="statement not covered" >  res.status(404).json({ message: "Route not found" });</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function notFoundRoute(_req: Request, res: Response) {
+  res.status(404).json({ message: "Route not found" });
+}
 &nbsp;
-export <span class="fstat-no" title="function not covered" >function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {</span>
-<span class="cstat-no" title="statement not covered" >  if (err instanceof HttpError) {</span>
-<span class="cstat-no" title="statement not covered" >    res.status(err.status).json({ message: err.message });</span>
-<span class="cstat-no" title="statement not covered" >    return;</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" >  // Malformed JSON from express.json()</span>
-<span class="cstat-no" title="statement not covered" >  if (typeof err === "object" &amp;&amp; err !== null &amp;&amp; "type" in err &amp;&amp; err.type === "entity.parse.failed") {</span>
-<span class="cstat-no" title="statement not covered" >    res.status(400).json({ message: "Malformed JSON body" });</span>
-<span class="cstat-no" title="statement not covered" >    return;</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" >  console.error(err);</span>
-<span class="cstat-no" title="statement not covered" >  res.status(500).json({ message: "Internal server error" });</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+  if (err instanceof HttpError) {
+    res.status(err.status).json({ message: err.message });
+    return;
+  }
+  // Malformed JSON from express.json()
+  if (typeof err === "object" &amp;&amp; err !== null &amp;&amp; "type" in err &amp;&amp; err.type === "entity.parse.failed") {
+    res.status(400).json({ message: "Malformed JSON body" });
+    return;
+  }
+  console.error(err);
+  res.status(500).json({ message: "Internal server error" });
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -130,7 +130,7 @@ export <span class="fstat-no" title="function not covered" >function errorHandle
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-03T05:35:25.215Z
+                at 2026-11-03T05:40:09.460Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

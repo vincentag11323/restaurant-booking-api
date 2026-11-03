@@ -24,7 +24,12 @@ export function createApp() {
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
   });
-  app.use("/api/auth", rateLimit({ windowMs: 15 * 60_000, limit: config.authRateLimit }), authRouter);
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60_000,
+    limit: config.authRateLimit,
+    message: { message: "Too many attempts. Please wait a few minutes and try again." },
+  });
+  app.use("/api/auth", authLimiter, authRouter);
   app.use("/api/me", profileRouter);
   app.use("/api/menu", menuRouter);
   app.use("/api/admin", adminRouter);
