@@ -20,13 +20,13 @@ const updateProfileSchema = z.object({
 
 profileRouter.get("/", requirePermission("profile:own"), async (req, res) => {
   // Deleting a user deletes their sessions (cascade), so a signed-in caller's row always exists.
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: currentUser(req).id } });
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: currentUser(req).userId } });
   res.json(publicUser(user));
 });
 
 profileRouter.patch("/", requirePermission("profile:own"), async (req, res) => {
   const input = parse(updateProfileSchema, req.body);
-  const user = await prisma.user.update({ where: { id: currentUser(req).id }, data: input });
+  const user = await prisma.user.update({ where: { id: currentUser(req).userId }, data: input });
   await audit(req, "UPDATE_PROFILE", { resourceId: user.id, metadata: { fields: Object.keys(input) } });
   res.json(publicUser(user));
 });

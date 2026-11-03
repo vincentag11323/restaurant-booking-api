@@ -4,7 +4,7 @@ import { HttpError } from "../lib/errors.js";
 
 /** Every failed response goes through here so it's logged (api_spec.md §8). */
 export function sendFailure(req: Request, res: Response, status: number, message: string, error?: Error) {
-  logFailure({ status, method: req.method, path: req.originalUrl.split("?")[0], message, userId: req.user?.id, ip: req.ip, error });
+  logFailure({ status, method: req.method, path: req.originalUrl.split("?")[0], message, userId: req.auth?.userId, ip: req.ip, error });
   res.status(status).json({ message });
 }
 

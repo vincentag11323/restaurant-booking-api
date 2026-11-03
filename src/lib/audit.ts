@@ -22,7 +22,7 @@ export async function audit(
   await prisma.auditLog.create({
     data: {
       action,
-      actorId: opts.actorId ?? req.user?.id ?? null,
+      actorId: opts.actorId ?? req.auth?.userId ?? null,
       resourceId: opts.resourceId,
       ipAddress: req.ip,
       userAgent: req.get("user-agent"),

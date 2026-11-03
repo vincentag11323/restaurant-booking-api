@@ -62,7 +62,7 @@ agentRouter.post("/reservations", requirePermission("reservation:create_on_behal
 
   // The cap is checked inside the booking transaction while holding the guest's row lock, so simultaneous
   // confirmations for one email queue up instead of all reading the same count.
-  const reservation = await bookReservation(booking, { userId: guest.id, createdById: agent.id, source: "AGENT", idempotencyKey }, async (tx) => {
+  const reservation = await bookReservation(booking, { userId: guest.id, createdById: agent.userId, source: "AGENT", idempotencyKey }, async (tx) => {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${guest.id} FOR UPDATE`;
     const limit = assistantBookingLimit(guest);
     if ((await upcomingAssistantBookings(guest.id, tx)) >= limit) {

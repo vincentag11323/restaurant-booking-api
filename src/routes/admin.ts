@@ -8,7 +8,7 @@ import { audit, securityAlert } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { notFound } from "../lib/errors.js";
 import { branchEnum, dateString, parse, sectorEnum, statusEnum } from "../lib/validate.js";
-import { requirePermission } from "../middleware/auth.js";
+import { currentUser, requirePermission } from "../middleware/auth.js";
 
 /** Read-only by design (PRD v1): only GET routes live here. */
 export const adminRouter = Router();
@@ -144,7 +144,7 @@ adminRouter.get("/reservations/export", async (req, res) => {
 
   await audit(req, "EXPORT_RESERVATIONS", { metadata: { rows: rows.length, format, filters } });
   if (rows.length > BULK_EXPORT_ALERT_ROWS) {
-    await securityAlert(req, "Bulk booking export", { rows: rows.length, adminId: req.user?.id });
+    await securityAlert(req, "Bulk booking export", { rows: rows.length, adminId: currentUser(req).userId });
   }
 
   const filename = `reservations-${todayLocal(config.utcOffset)}.${format}`;

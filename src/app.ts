@@ -7,6 +7,7 @@ import { adminRouter } from "./routes/admin.js";
 import { agentRouter } from "./routes/agent.js";
 import { HttpError } from "./lib/errors.js";
 import { jsonRateLimit } from "./lib/rate_limit.js";
+import { requireAdmin, requireAgentKey, requireSession } from "./middleware/auth.js";
 import { errorHandler, notFoundRoute } from "./middleware/error.js";
 import { authRouter } from "./routes/auth.js";
 import { menuRouter, recommendationsRouter } from "./routes/menu.js";
@@ -47,9 +48,9 @@ export function createApp() {
     .use("/me", profileRouter)
     .use("/reservations", reservationsRouter)
     .use("/menus/recommendations", recommendationsRouter);
-  app.use("/api/users", userRoutes);
-  app.use("/api/admins", adminRouter);
-  app.use("/api/agents", agentRouter);
+  app.use("/api/users", requireSession, userRoutes);
+  app.use("/api/admins", requireSession, requireAdmin, adminRouter);
+  app.use("/api/agents", requireAgentKey, agentRouter);
 
   app.use(notFoundRoute);
   app.use(errorHandler);

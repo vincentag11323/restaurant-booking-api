@@ -56,7 +56,7 @@ function assertModifiable(reservation: { status: string; slotStart: Date }) {
 
 reservationsRouter.get("/", async (req, res) => {
   const reservations = await prisma.reservation.findMany({
-    where: { userId: currentUser(req).id },
+    where: { userId: currentUser(req).userId },
     select: reservationSelect,
     orderBy: { slotStart: "desc" },
   });
@@ -64,16 +64,16 @@ reservationsRouter.get("/", async (req, res) => {
 });
 
 reservationsRouter.get("/:id", async (req, res) => {
-  res.json(await findOwned(currentUser(req).id, req.params.id));
+  res.json(await findOwned(currentUser(req).userId, req.params.id));
 });
 
 reservationsRouter.post("/", async (req, res) => {
   const user = currentUser(req);
   const input = parse(createSchema, req.body);
-  const reservation = await bookReservation(input, { userId: user.id, createdById: user.id, source: "APP" });
+  const reservation = await bookReservation(input, { userId: user.userId, createdById: user.userId, source: "APP" });
 
   await audit(req, "CREATE_RESERVATION", { resourceId: reservation.id, metadata: { source: "APP" } });
-  const { email } = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { email: true } });
+  const { email } = await prisma.user.findUniqueOrThrow({ where: { id: user.userId }, select: { email: true } });
   await notify(email, "Booking confirmed", `Reservation ${reservation.code} at ${reservation.slotStart.toISOString()}`);
   res.status(201).json(reservation);
 });
@@ -81,7 +81,7 @@ reservationsRouter.post("/", async (req, res) => {
 /** Reschedule: old tables are released and new ones taken in one transaction, so failure keeps the old booking. */
 reservationsRouter.patch("/:id", async (req, res) => {
   const user = currentUser(req);
-  const existing = await findOwned(user.id, req.params.id);
+  const existing = await findOwned(user.userId, req.params.id);
   assertModifiable(existing);
   const input = parse(rescheduleSchema, req.body);
   const { slotStart, slotEnd } = resolveSlot(input.date, input.startTime);
@@ -113,7 +113,7 @@ reservationsRouter.patch("/:id", async (req, res) => {
 
 /** Soft cancel: keeps the record, frees the tables. */
 reservationsRouter.delete("/:id", async (req, res) => {
-  const existing = await findOwned(currentUser(req).id, req.params.id);
+  const existing = await findOwned(currentUser(req).userId, req.params.id);
   assertModifiable(existing);
   const reservation = await prisma.$transaction(async (tx) => {
     await claimConfirmed(tx, existing.id);

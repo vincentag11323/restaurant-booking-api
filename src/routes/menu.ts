@@ -18,7 +18,7 @@ menuRouter.get("/", async (req, res) => {
 
 /** v1 "recommendations": allergy-safe dishes, chef's picks first. */
 recommendationsRouter.get("/", requirePermission("menu:recommendations"), async (req, res) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: currentUser(req).id } });
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: currentUser(req).userId } });
   const allergies = new Set(user.allergies.map((a) => a.toLowerCase()));
   const items = await prisma.menuItem.findMany({ orderBy: [{ chefPick: "desc" }, { name: "asc" }] });
   res.json(items.filter((item) => !item.allergens.some((a) => allergies.has(a.toLowerCase()))));

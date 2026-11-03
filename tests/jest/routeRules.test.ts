@@ -87,7 +87,8 @@ describe("/api/agents: agent key check", () => {
   });
 
   it("a missing or empty key is 401 Authentication required", async () => {
-    for (const headers of [{}, { "X-Agent-Key": "" }]) {
+    const callers: Record<string, string>[] = [{}, { "X-Agent-Key": "" }];
+    for (const headers of callers) {
       const res = await lookup(headers);
       expect([res.status, res.body]).toEqual([401, AUTH_REQUIRED]);
     }
