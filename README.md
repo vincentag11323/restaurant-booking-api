@@ -4,6 +4,8 @@ REST API for the ResortOS restaurant booking app: guest accounts, table reservat
 
 Express 5 · TypeScript · Prisma 7 · PostgreSQL · Zod · Playwright
 
+**Docs:** [docs/API.md](docs/API.md) (every endpoint, who may call it, exact errors, logs) and [docs/DATABASE.md](docs/DATABASE.md) (every table and column), both in plain words.
+
 Specs live in the planning repo (`../requirements/`): `PRD_BOOKING_v1.md` (scope), `api_spec.md` (endpoints), `data_model.md` (schema).
 
 ## Run locally
@@ -42,8 +44,10 @@ Neither suite needs a database. Each boots its own in-memory PGlite (Playwright 
 | Path | What lives there |
 |---|---|
 | `src/domain/` | Booking rules: fixed slots (`slots.ts`), table allocation (`allocation.ts`), reservation transactions (`reservations.ts`) |
-| `src/routes/` | One router per resource: `auth`, `profile`, `reservations` (+ availability), `menu`, `admin`, `agent` (the assistant's two routes) |
-| `src/lib/` | DB client, session tokens and agent key hash, Zod helpers, permissions (RBAC), audit log, failure log, rate limits, notification stub |
+| `src/routes/` | One router per resource: `auth`, `profile`, `reservations` (+ availability), `menu` (+ recommendations), `admin`, `agent` (the assistant's two routes); `app.ts` mounts them in the route groups |
+| `src/middleware/` | The auth check per route group (`requireSession`, `requireAdmin`, `requireAgentKey`), the error handler |
+| `src/lib/` | DB client, session tokens and SHA-256, Zod helpers, permissions (RBAC), audit log, app and error logs, rate limits, notification stub |
+| `docs/` | Plain-language guides: `API.md`, `DATABASE.md` |
 | `prisma/` | Schema, migrations (the init migration adds the append-only `AuditLog` trigger), seed |
 | `tests/unit/`, `tests/api/` | Playwright suites |
 | `tests/jest/` | Jest suites (coverage) |
@@ -54,11 +58,16 @@ Neither suite needs a database. Each boots its own in-memory PGlite (Playwright 
 * `npm run build && npm start`. Apply migrations with `npm run db:migrate`.
 * Give the app's database role only `INSERT, SELECT` on `"AuditLog"`.
 
-## Failure log
-Every 4xx/5xx response is written as one JSON line to `logs/errors.log` (`ERROR_LOG_PATH`) and printed with `console.error`. No bodies, passwords or query strings. The file rotates at 5 MB (`ERROR_LOG_MAX_BYTES`) and keeps 3 old copies.
+## Logs
+* `logs/app.log` (`APP_LOG_PATH`): one line for every request that changed the database and succeeded (sign-up, sign-in, sign-out, profile and booking changes), also printed with `console.log`.
+* `logs/errors.log` (`ERROR_LOG_PATH`): one line for every 4xx/5xx response, also printed with `console.error`.
+* Every line starts with the HTTP method in brackets, then JSON: `[POST] {"time":…,"action":"RESERVATION_CREATED",…}`. No bodies, passwords, tokens, keys, query strings or personal data.
+* Each file is renamed to `.1` once it passes 5 MB (`APP_LOG_MAX_BYTES`, `ERROR_LOG_MAX_BYTES`) and the previous `.1` is deleted: one live file and at most one old copy. Old `errors.log.2` / `.3` files from earlier versions are no longer touched and can be deleted by hand. `APP_LOG_CONSOLE=false` / `ERROR_LOG_CONSOLE=false` stop the printing.
 
 ## Sessions
-* Guests and admins: signing in sets an `HttpOnly`, `SameSite=Lax` cookie `session` on path `/`, valid for a fixed `SESSION_TTL` from sign-in (default `1h`, e.g. `30m` or `8s`) and never extended. There is no refresh: after it ends every call returns `401` and the guest signs in again. `Authorization: Bearer` is not accepted.
-* The AI assistant sends `X-Agent-Key: <AGENT_API_KEY>`. The seed stores only its SHA-256 on `assistant@resortos.internal`, which has no password; a wrong key gets `401 Invalid API key`.
+* Guests and admins: signing in sets an `HttpOnly`, `SameSite=Lax` cookie `session` on path `/` holding a random token, valid for a fixed `SESSION_TTL` from sign-in (default `1h`, e.g. `30m` or `8s`) and never extended. The server keeps one `Session` row per signed-in browser with only the token's SHA-256. There is no refresh: after it ends every call returns `401` and the guest signs in again. `Authorization: Bearer` is not accepted.
+* Signing out deletes that browser's `Session` row, so the cookie and any copy of it stop working at once; other devices stay signed in. Deleting a user deletes their sessions.
+* The AI assistant sends `X-Agent-Key: <AGENT_API_KEY>`. The seed stores only its SHA-256 in the `ApiKey` table, on `assistant@resortos.internal` (no password); re-seeding with a new key replaces it. A wrong key gets `401 Invalid API key`.
+* Route groups: `/api/public` (no sign-in), `/api/auth` (rate limit), `/api/users` (session cookie), `/api/admins` (session cookie + admin), `/api/agents` (assistant key). See [docs/API.md](docs/API.md).
 * Origin rule (CSRF): a request other than GET/HEAD/OPTIONS whose `Origin` header isn't `CORS_ORIGIN` gets `403 Cross-origin request blocked`.
 * In development, open the web app at `http://localhost:5173`, not `127.0.0.1`: the browser then sends `Origin: http://127.0.0.1:5173`, which isn't `CORS_ORIGIN`, so sign-in and every other POST get `403`.
