@@ -13,7 +13,7 @@ cp .env.example .env
 npm install            # also runs `prisma generate`
 npm run db:local       # terminal 1: embedded Postgres (PGlite) persisted in ./.pglite
 npm run db:migrate     # terminal 2
-npm run db:seed        # dining tables, menu, admin account from ADMIN_EMAIL / ADMIN_PASSWORD
+npm run db:seed        # dining tables, menu, admin account (ADMIN_EMAIL / ADMIN_PASSWORD), assistant account storing only the SHA-256 of AGENT_API_KEY
 npm run dev            # http://localhost:4000/api/health
 ```
 
@@ -43,19 +43,22 @@ Neither suite needs a database. Each boots its own in-memory PGlite (Playwright 
 |---|---|
 | `src/domain/` | Booking rules: fixed slots (`slots.ts`), table allocation (`allocation.ts`), reservation transactions (`reservations.ts`) |
 | `src/routes/` | One router per resource: `auth`, `profile`, `reservations` (+ availability), `menu`, `admin`, `agent` (the assistant's two routes) |
-| `src/lib/` | DB client, JWT, Zod helpers, permissions (RBAC), audit log, failure log, rate limits, notification stub |
+| `src/lib/` | DB client, session tokens and agent key hash, Zod helpers, permissions (RBAC), audit log, failure log, rate limits, notification stub |
 | `prisma/` | Schema, migrations (the init migration adds the append-only `AuditLog` trigger), seed |
 | `tests/unit/`, `tests/api/` | Playwright suites |
 | `tests/jest/` | Jest suites (coverage) |
 
 ## Production notes
 
-* Set `NODE_ENV=production`, long random `JWT_*` secrets, `CORS_ORIGIN` to the web app's URL, and serve over HTTPS (the refresh cookie is `Secure` in production).
+* Set `NODE_ENV=production`, a long random `SESSION_SECRET`, an `AGENT_API_KEY` of at least 32 characters, `CORS_ORIGIN` to the web app's URL, and serve over HTTPS (the session cookie is `Secure` in production).
 * `npm run build && npm start`. Apply migrations with `npm run db:migrate`.
 * Give the app's database role only `INSERT, SELECT` on `"AuditLog"`.
 
 ## Failure log
 Every 4xx/5xx response is written as one JSON line to `logs/errors.log` (`ERROR_LOG_PATH`) and printed with `console.error`. No bodies, passwords or query strings. The file rotates at 5 MB (`ERROR_LOG_MAX_BYTES`) and keeps 3 old copies.
 
-## Tokens
-Access token 15 minutes (`ACCESS_TOKEN_TTL`), kept in memory by the app. Refresh token 7 days in an HttpOnly cookie on `/api/auth`, rotated on each refresh.
+## Sessions
+* Guests and admins: signing in sets an `HttpOnly`, `SameSite=Lax` cookie `session` on path `/`, valid for a fixed `SESSION_TTL` from sign-in (default `1h`, e.g. `30m` or `8s`) and never extended. There is no refresh: after it ends every call returns `401` and the guest signs in again. `Authorization: Bearer` is not accepted.
+* The AI assistant sends `X-Agent-Key: <AGENT_API_KEY>`. The seed stores only its SHA-256 on `assistant@resortos.internal`, which has no password; a wrong key gets `401 Invalid API key`.
+* Origin rule (CSRF): a request other than GET/HEAD/OPTIONS whose `Origin` header isn't `CORS_ORIGIN` gets `403 Cross-origin request blocked`.
+* In development, open the web app at `http://localhost:5173`, not `127.0.0.1`: the browser then sends `Origin: http://127.0.0.1:5173`, which isn't `CORS_ORIGIN`, so sign-in and every other POST get `403`.
