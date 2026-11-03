@@ -8,6 +8,7 @@ import { TEST_ENV } from "./global-setup.js";
 import { ADMIN, app, daysAhead, registerGuest } from "./helpers.js";
 
 const AGENT_EMAIL = "assistant@resortos.internal";
+const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 const agent = { "X-Agent-Key": TEST_ENV.AGENT_API_KEY };
 
 afterAll(() => prisma.$disconnect());
@@ -128,9 +129,26 @@ describe("agent API key", () => {
     expect([res.status, res.body]).toEqual([401, { message: "Invalid email or password" }]);
   });
 
-  it("the seed stores only the SHA-256 of the key and no password", async () => {
-    const account = await prisma.user.findUniqueOrThrow({ where: { email: AGENT_EMAIL } });
-    expect(account).toMatchObject({ role: "AGENT", passwordHash: null, apiKeyHash: createHash("sha256").update(TEST_ENV.AGENT_API_KEY).digest("hex") });
+  it("the seed stores only the SHA-256 of the key, in the assistant's one ApiKey row, and no password", async () => {
+    const account = await prisma.user.findUniqueOrThrow({ where: { email: AGENT_EMAIL }, include: { apiKey: true } });
+    expect(account).toMatchObject({ role: "AGENT", passwordHash: null });
+    expect(account.apiKey).toMatchObject({ name: "AI booking assistant", keyHash: sha256(TEST_ENV.AGENT_API_KEY) });
+  });
+
+  it("re-seeding with a new key replaces the hash in the same row, and the old key stops working", async () => {
+    const run = promisify(exec);
+    const newKey = `rotated-key-${randomUUID()}`;
+    try {
+      await run("npx tsx prisma/seed.ts", { env: { ...process.env, AGENT_API_KEY: newKey } });
+      const account = await prisma.user.findUniqueOrThrow({ where: { email: AGENT_EMAIL }, include: { apiKey: true } });
+      expect(account.apiKey?.keyHash).toBe(sha256(newKey));
+      expect(await prisma.apiKey.count({ where: { userId: account.id } })).toBe(1);
+      const old = await request(app).post("/api/agent/guests/lookup").set(agent).send({ email: "a@b.co" });
+      expect([old.status, old.body]).toEqual([401, { message: "Invalid API key" }]);
+    } finally {
+      await run("npx tsx prisma/seed.ts", { env: process.env });
+    }
+    expect((await request(app).post("/api/agent/guests/lookup").set(agent).send({ email: "a@b.co" })).status).toBe(200);
   });
 
   it("the seed refuses a key shorter than 32 characters", async () => {
