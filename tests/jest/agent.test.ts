@@ -16,7 +16,7 @@ afterAll(() => prisma.$disconnect());
 const email = () => `jest-agent-${randomUUID()}@test.dev`;
 const booking = (days: number, startTime = "11:00") => ({ branch: "BRANCH_2", sector: "VIP_WING", date: daysAhead(days), startTime, partySize: 2 });
 const book = (data: Record<string, unknown>, headers: Record<string, string> = {}) =>
-  request(app).post("/api/agent/reservations").set(agent).set(headers).send(data);
+  request(app).post("/api/agents/reservations").set(agent).set(headers).send(data);
 
 describe("agent booking", () => {
   it("books for a new guest, records who booked, audits it and notifies the guest", async () => {
@@ -38,7 +38,7 @@ describe("agent booking", () => {
     const res = await book({ email: guest.email.toUpperCase(), phone: "+62 899 999 999", ...booking(52) });
     expect(res.status).toBe(201);
     expect((await prisma.user.findUniqueOrThrow({ where: { email: guest.email } })).phone).toBe("+62 811 123 456");
-    expect((await request(app).get("/api/reservations").set(guest.auth)).body.map((r: { id: string }) => r.id)).toContain(res.body.id);
+    expect((await request(app).get("/api/users/reservations").set(guest.auth)).body.map((r: { id: string }) => r.id)).toContain(res.body.id);
   });
 
   it("returns the earlier booking for a repeated Idempotency-Key, and refuses the key for another email", async () => {
@@ -90,7 +90,7 @@ describe("agent booking", () => {
 });
 
 describe("agent guest lookup", () => {
-  const lookup = (body: unknown) => request(app).post("/api/agent/guests/lookup").set(agent).send(body as object);
+  const lookup = (body: unknown) => request(app).post("/api/agents/guests/lookup").set(agent).send(body as object);
 
   it("answers only exists + upcoming count, and audits every lookup", async () => {
     const guestEmail = email();
@@ -114,13 +114,13 @@ describe("agent guest lookup", () => {
 
 describe("agent API key", () => {
   it("rejects a wrong X-Agent-Key", async () => {
-    const res = await request(app).post("/api/agent/guests/lookup").set("X-Agent-Key", "wrong-key-wrong-key-wrong-key-wrong-key").send({ email: "a@b.co" });
+    const res = await request(app).post("/api/agents/guests/lookup").set("X-Agent-Key", "wrong-key-wrong-key-wrong-key-wrong-key").send({ email: "a@b.co" });
     expect([res.status, res.body]).toEqual([401, { message: "Invalid API key" }]);
   });
 
   it("does not accept a guest session sent as a Bearer token", async () => {
     const guest = await registerGuest();
-    const res = await request(app).post("/api/agent/guests/lookup").set("Authorization", `Bearer ${guest.auth.Cookie.slice("session=".length)}`).send({ email: "a@b.co" });
+    const res = await request(app).post("/api/agents/guests/lookup").set("Authorization", `Bearer ${guest.auth.Cookie.slice("session=".length)}`).send({ email: "a@b.co" });
     expect([res.status, res.body]).toEqual([401, { message: "Authentication required" }]);
   });
 
@@ -143,12 +143,12 @@ describe("agent API key", () => {
       const account = await prisma.user.findUniqueOrThrow({ where: { email: AGENT_EMAIL }, include: { apiKey: true } });
       expect(account.apiKey?.keyHash).toBe(sha256(newKey));
       expect(await prisma.apiKey.count({ where: { userId: account.id } })).toBe(1);
-      const old = await request(app).post("/api/agent/guests/lookup").set(agent).send({ email: "a@b.co" });
+      const old = await request(app).post("/api/agents/guests/lookup").set(agent).send({ email: "a@b.co" });
       expect([old.status, old.body]).toEqual([401, { message: "Invalid API key" }]);
     } finally {
       await run("npx tsx prisma/seed.ts", { env: process.env });
     }
-    expect((await request(app).post("/api/agent/guests/lookup").set(agent).send({ email: "a@b.co" })).status).toBe(200);
+    expect((await request(app).post("/api/agents/guests/lookup").set(agent).send({ email: "a@b.co" })).status).toBe(200);
   });
 
   it("the seed refuses a key shorter than 32 characters", async () => {
@@ -178,7 +178,7 @@ describe("agent API key", () => {
 describe("RBAC and guest-account claim", () => {
   it("forbids a guest from assistant routes", async () => {
     const guest = await registerGuest();
-    const res = await request(app).post("/api/agent/guests/lookup").set(guest.auth).send({ email: "a@b.co" });
+    const res = await request(app).post("/api/agents/guests/lookup").set(guest.auth).send({ email: "a@b.co" });
     expect([res.status, res.body]).toEqual([403, { message: "Forbidden" }]);
   });
 

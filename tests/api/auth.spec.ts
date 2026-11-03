@@ -35,19 +35,19 @@ test.describe("guest auth", () => {
     expect(await res.json()).toEqual({ message: "Invalid email or password" });
   });
 
-  test("the session cookie authenticates GET /api/me", async ({ request }) => {
+  test("the session cookie authenticates GET /api/users/me", async ({ request }) => {
     const { headers, email } = await registerGuest(request);
-    const res = await request.get("/api/me", { headers });
+    const res = await request.get("/api/users/me", { headers });
     expect(res.status()).toBe(200);
     expect((await res.json()).email).toBe(email);
   });
 
   test("(A14) after sign-out the same cookie is refused at once", async ({ request }) => {
     const { headers } = await registerGuest(request);
-    expect((await request.get("/api/me", { headers })).status()).toBe(200);
+    expect((await request.get("/api/users/me", { headers })).status()).toBe(200);
     const out = await request.post("/api/auth/logout", { headers });
     expect(out.status()).toBe(200);
-    const res = await request.get("/api/me", { headers });
+    const res = await request.get("/api/users/me", { headers });
     expect(res.status()).toBe(401);
     expect(await res.json()).toEqual({ message: "Invalid or expired token" });
   });
@@ -60,7 +60,7 @@ test.describe("guest auth", () => {
 
   test("the session sent as a Bearer token gets 401", async ({ request }) => {
     const { headers } = await registerGuest(request);
-    const res = await request.get("/api/me", { headers: { Authorization: `Bearer ${headers.Cookie.slice("session=".length)}` } });
+    const res = await request.get("/api/users/me", { headers: { Authorization: `Bearer ${headers.Cookie.slice("session=".length)}` } });
     expect(res.status()).toBe(401);
     expect(await res.json()).toEqual({ message: "Authentication required" });
   });
@@ -68,14 +68,14 @@ test.describe("guest auth", () => {
 
 test.describe("profile", () => {
   test("requires a session", async ({ request }) => {
-    const res = await request.get("/api/me");
+    const res = await request.get("/api/users/me");
     expect(res.status()).toBe(401);
     expect(await res.json()).toEqual({ message: "Authentication required" });
   });
 
   test("allergies are saved as lowercase tags", async ({ request }) => {
     const { headers } = await registerGuest(request);
-    const res = await request.patch("/api/me", { headers, data: { allergies: ["Shellfish", "NUTS"] } });
+    const res = await request.patch("/api/users/me", { headers, data: { allergies: ["Shellfish", "NUTS"] } });
     expect(res.status()).toBe(200);
     expect((await res.json()).allergies).toEqual(["shellfish", "nuts"]);
   });

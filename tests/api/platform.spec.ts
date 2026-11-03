@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { loginAdmin, registerGuest } from "./helpers.js";
 
 test("health check answers ok", async ({ request }) => {
-  const res = await request.get("/api/health");
+  const res = await request.get("/api/public/health");
   expect(res.status()).toBe(200);
   expect(await res.json()).toEqual({ status: "ok" });
 });
@@ -13,6 +13,15 @@ test("an unknown route is 404 with a JSON message", async ({ request }) => {
   expect(await res.json()).toEqual({ message: "Route not found" });
 });
 
+test("old singular paths are gone", async ({ request }) => {
+  for (const path of ["/api/health", "/api/menu", "/api/me", "/api/admin/stats"]) {
+    const res = await request.get(path);
+    expect([path, res.status(), await res.json()]).toEqual([path, 404, { message: "Route not found" }]);
+  }
+  const lookup = await request.post("/api/agent/guests/lookup", { data: { email: "a@b.co" } });
+  expect([lookup.status(), await lookup.json()]).toEqual([404, { message: "Route not found" }]);
+});
+
 test("a malformed JSON body is 400", async ({ request }) => {
   const res = await request.post("/api/auth/login", { headers: { "Content-Type": "application/json" }, data: "{not json" });
   expect(res.status()).toBe(400);
@@ -20,13 +29,13 @@ test("a malformed JSON body is 400", async ({ request }) => {
 });
 
 test("a forged session cookie is 401", async ({ request }) => {
-  const res = await request.get("/api/me", { headers: { Cookie: "session=not-a-real-token" } });
+  const res = await request.get("/api/users/me", { headers: { Cookie: "session=not-a-real-token" } });
   expect(res.status()).toBe(401);
   expect(await res.json()).toEqual({ message: "Invalid or expired token" });
 });
 
 test("security headers are set", async ({ request }) => {
-  const res = await request.get("/api/health");
+  const res = await request.get("/api/public/health");
   expect(res.headers()["x-content-type-options"]).toBe("nosniff");
   expect(res.headers()["x-powered-by"]).toBeUndefined();
 });
@@ -35,11 +44,11 @@ test("logout clears the session cookie so the session stops working", async ({ p
   const guest = await playwright.request.newContext({ baseURL });
   const reg = await guest.post("/api/auth/register", { data: { email: `logout-${Date.now()}@test.dev`, password: "Password123", name: "Logout" } });
   expect(reg.status()).toBe(201);
-  expect((await guest.get("/api/me")).status()).toBe(200);
+  expect((await guest.get("/api/users/me")).status()).toBe(200);
   const out = await guest.post("/api/auth/logout");
   expect(out.status()).toBe(200);
   expect(await out.json()).toEqual({ message: "Logged out" });
-  const me = await guest.get("/api/me");
+  const me = await guest.get("/api/users/me");
   expect(me.status()).toBe(401);
   expect(await me.json()).toEqual({ message: "Authentication required" });
   await guest.dispose();
@@ -70,29 +79,29 @@ test("login rejects a malformed email before checking credentials", async ({ req
 
 test("a guest can clear their phone number", async ({ request }) => {
   const { headers } = await registerGuest(request);
-  const res = await request.patch("/api/me", { headers, data: { phone: null, name: "  Renamed  " } });
+  const res = await request.patch("/api/users/me", { headers, data: { phone: null, name: "  Renamed  " } });
   expect(await res.json()).toMatchObject({ phone: null, name: "Renamed" });
 });
 
 test.describe("query validation", () => {
   test("availability requires a valid branch, sector and date", async ({ request }) => {
-    const res = await request.get("/api/availability?branch=BRANCH_9&sector=MAIN_HALL&date=tomorrow");
+    const res = await request.get("/api/public/availabilities?branch=BRANCH_9&sector=MAIN_HALL&date=tomorrow");
     expect(res.status()).toBe(400);
     expect((await res.json()).message).toContain("date: Expected date as YYYY-MM-DD");
   });
 
   test("menu rejects an unknown type", async ({ request }) => {
-    expect((await request.get("/api/menu?type=BRUNCH")).status()).toBe(400);
+    expect((await request.get("/api/public/menus?type=BRUNCH")).status()).toBe(400);
   });
 
   test("admin page size is capped at 100", async ({ request }) => {
     const { headers } = await loginAdmin(request);
-    expect((await request.get("/api/admin/reservations?pageSize=101", { headers })).status()).toBe(400);
+    expect((await request.get("/api/admins/reservations?pageSize=101", { headers })).status()).toBe(400);
   });
 
   test("admin stats default to today in restaurant time", async ({ request }) => {
     const { headers } = await loginAdmin(request);
-    const stats = await (await request.get("/api/admin/stats", { headers })).json();
+    const stats = await (await request.get("/api/admins/stats", { headers })).json();
     const today = new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10);
     expect(stats.date).toBe(today);
     expect(stats.utilization.map((u: { capacityUnits: number }) => u.capacityUnits)).toEqual([400, 32]);

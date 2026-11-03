@@ -67,14 +67,14 @@ describe("auth", () => {
 
   it("never re-issues the session cookie on later calls", async () => {
     const { auth } = await registerGuest();
-    const me = await request(app).get("/api/me").set(auth);
+    const me = await request(app).get("/api/users/me").set(auth);
     expect(me.status).toBe(200);
     expect(me.headers["set-cookie"]).toBeUndefined();
   });
 
   it("rejects a forged session cookie", async () => {
     for (const cookie of ["session=forged", forgedCookie()]) {
-      const res = await request(app).get("/api/me").set("Cookie", cookie);
+      const res = await request(app).get("/api/users/me").set("Cookie", cookie);
       expect([res.status, res.body]).toEqual([401, EXPIRED]);
     }
   });
@@ -82,7 +82,7 @@ describe("auth", () => {
   it("does not accept the session as a Bearer token", async () => {
     const { auth } = await registerGuest();
     const token = auth.Cookie.slice("session=".length);
-    const res = await request(app).get("/api/me").set("Authorization", `Bearer ${token}`);
+    const res = await request(app).get("/api/users/me").set("Authorization", `Bearer ${token}`);
     expect([res.status, res.body]).toEqual([401, { message: "Authentication required" }]);
   });
 
@@ -91,14 +91,14 @@ describe("auth", () => {
     const out = await agent.post("/api/auth/logout");
     expect(out.body).toEqual({ message: "Logged out" });
     expect(out.headers["set-cookie"]?.[0]).toMatch(/^session=;.*Path=\/;.*Expires=Thu, 01 Jan 1970/);
-    const me = await agent.get("/api/me");
+    const me = await agent.get("/api/users/me");
     expect([me.status, me.body]).toEqual([401, { message: "Authentication required" }]);
   });
 
   it("treats a valid session for a deleted account as expired", async () => {
     const { auth, user } = await registerGuest();
     await prisma.user.delete({ where: { id: user.id } });
-    const res = await request(app).get("/api/me").set(auth);
+    const res = await request(app).get("/api/users/me").set(auth);
     expect([res.status, res.body]).toEqual([401, { message: "Invalid or expired token" }]);
   });
 });
@@ -119,7 +119,7 @@ describe("server-side sessions", () => {
     const copy = { ...auth };
     const out = await request(app).post("/api/auth/logout").set(auth);
     expect([out.status, out.body]).toEqual([200, { message: "Logged out" }]);
-    const me = await request(app).get("/api/me").set(copy);
+    const me = await request(app).get("/api/users/me").set(copy);
     expect([me.status, me.body]).toEqual([401, EXPIRED]);
     expect(await sessionRow(copy.Cookie)).toBeNull();
   });
@@ -127,7 +127,7 @@ describe("server-side sessions", () => {
   it("(A15) a session older than 1 hour is refused, and signing in again deletes the old row", async () => {
     const { auth, user, email } = await registerGuest();
     await expire(auth.Cookie);
-    const me = await request(app).get("/api/me").set(auth);
+    const me = await request(app).get("/api/users/me").set(auth);
     expect([me.status, me.body]).toEqual([401, EXPIRED]);
 
     const login = await request(app).post("/api/auth/login").send({ email, password: "Password123" });
@@ -140,8 +140,8 @@ describe("server-side sessions", () => {
     const { auth: deviceA, email } = await registerGuest();
     const deviceB = { Cookie: sessionCookie(await request(app).post("/api/auth/login").send({ email, password: "Password123" })) };
     await request(app).post("/api/auth/logout").set(deviceA);
-    expect((await request(app).get("/api/me").set(deviceB)).status).toBe(200);
-    const a = await request(app).get("/api/me").set(deviceA);
+    expect((await request(app).get("/api/users/me").set(deviceB)).status).toBe(200);
+    const a = await request(app).get("/api/users/me").set(deviceA);
     expect([a.status, a.body]).toEqual([401, EXPIRED]);
   });
 
@@ -154,8 +154,8 @@ describe("server-side sessions", () => {
       expect(sessionCookie(login)).not.toBe(cookie);
       const register = await request(app).post("/api/auth/register").set("Cookie", cookie).send({ email: `jest-s13-${randomBytes(6).toString("hex")}@test.dev`, password: "Password123", name: "S13" });
       expect(register.status).toBe(201);
-      expect((await request(app).get("/api/menu").set("Cookie", cookie)).status).toBe(200);
-      expect((await request(app).get(`/api/availability?branch=BRANCH_1&sector=MAIN_HALL&date=${daysAhead(30)}`).set("Cookie", cookie)).status).toBe(200);
+      expect((await request(app).get("/api/public/menus").set("Cookie", cookie)).status).toBe(200);
+      expect((await request(app).get(`/api/public/availabilities?branch=BRANCH_1&sector=MAIN_HALL&date=${daysAhead(30)}`).set("Cookie", cookie)).status).toBe(200);
     }
   });
 
@@ -163,7 +163,7 @@ describe("server-side sessions", () => {
     const { auth } = await registerGuest();
     const out = await request(app).post("/api/auth/logout").set("Cookie", forgedCookie());
     expect([out.status, out.body]).toEqual([200, { message: "Logged out" }]);
-    expect((await request(app).get("/api/me").set(auth)).status).toBe(200);
+    expect((await request(app).get("/api/users/me").set(auth)).status).toBe(200);
   });
 
   it("signing out with an expired cookie deletes its row", async () => {
@@ -177,35 +177,35 @@ describe("server-side sessions", () => {
 describe("profile", () => {
   it("reads and updates the guest's own profile", async () => {
     const { auth } = await registerGuest();
-    expect((await request(app).get("/api/me").set(auth)).body.name).toBe("Jest Guest");
-    const res = await request(app).patch("/api/me").set(auth).send({ allergies: [" Gluten "], phone: null });
+    expect((await request(app).get("/api/users/me").set(auth)).body.name).toBe("Jest Guest");
+    const res = await request(app).patch("/api/users/me").set(auth).send({ allergies: [" Gluten "], phone: null });
     expect(res.body).toMatchObject({ allergies: ["gluten"], phone: null });
   });
 
   it("rejects a request without a session cookie", async () => {
-    const res = await request(app).get("/api/me");
+    const res = await request(app).get("/api/users/me");
     expect([res.status, res.body]).toEqual([401, { message: "Authentication required" }]);
   });
 });
 
 describe("menu", () => {
   it("lists all dishes or one type", async () => {
-    expect((await request(app).get("/api/menu")).body).toHaveLength(10);
-    const seasonal = (await request(app).get("/api/menu?type=SEASONAL_FINE_DINING")).body;
+    expect((await request(app).get("/api/public/menus")).body).toHaveLength(10);
+    const seasonal = (await request(app).get("/api/public/menus?type=SEASONAL_FINE_DINING")).body;
     expect(seasonal.every((d: { type: string }) => d.type === "SEASONAL_FINE_DINING")).toBe(true);
   });
 
   it("recommends everything to a guest without allergies, chef's picks first", async () => {
     const { auth } = await registerGuest();
-    const items: { chefPick: boolean }[] = (await request(app).get("/api/menu/recommendations").set(auth)).body;
+    const items: { chefPick: boolean }[] = (await request(app).get("/api/users/menus/recommendations").set(auth)).body;
     expect(items).toHaveLength(10);
     expect(items.slice(0, 3).every((i) => i.chefPick)).toBe(true);
   });
 
   it("matches allergens case-insensitively", async () => {
     const { auth } = await registerGuest();
-    await request(app).patch("/api/me").set(auth).send({ allergies: ["DAIRY"] });
-    const names = (await request(app).get("/api/menu/recommendations").set(auth)).body.map((i: { name: string }) => i.name);
+    await request(app).patch("/api/users/me").set(auth).send({ allergies: ["DAIRY"] });
+    const names = (await request(app).get("/api/users/menus/recommendations").set(auth)).body.map((i: { name: string }) => i.name);
     expect(names).not.toContain("Beef Steak");
     expect(names).toContain("Garden Salad");
   });

@@ -6,11 +6,11 @@ import { app, daysAhead, registerGuest } from "./helpers.js";
 afterAll(() => prisma.$disconnect());
 
 const book = (auth: Record<string, string>, data: Record<string, unknown>) =>
-  request(app).post("/api/reservations").set(auth).send({ branch: "BRANCH_1", sector: "MAIN_HALL", startTime: "11:00", partySize: 2, ...data });
+  request(app).post("/api/users/reservations").set(auth).send({ branch: "BRANCH_1", sector: "MAIN_HALL", startTime: "11:00", partySize: 2, ...data });
 
 describe("availability", () => {
   it("reports free units per sitting", async () => {
-    const res = await request(app).get(`/api/availability?branch=BRANCH_2&sector=VIP_WING&date=${daysAhead(31)}`);
+    const res = await request(app).get(`/api/public/availabilities?branch=BRANCH_2&sector=VIP_WING&date=${daysAhead(31)}`);
     expect(res.body.map((s: { startTime: string; freeUnits: number }) => [s.startTime, s.freeUnits])).toEqual([
       ["11:00", 4], ["13:30", 4], ["17:00", 4], ["19:30", 4],
     ]);
@@ -33,13 +33,13 @@ describe("booking", () => {
     const { auth } = await registerGuest();
     const early = (await book(auth, { date: daysAhead(33) })).body;
     const late = (await book(auth, { date: daysAhead(34) })).body;
-    expect((await request(app).get("/api/reservations").set(auth)).body.map((r: { id: string }) => r.id)).toEqual([late.id, early.id]);
+    expect((await request(app).get("/api/users/reservations").set(auth)).body.map((r: { id: string }) => r.id)).toEqual([late.id, early.id]);
   });
 
   it("reschedules keeping the party size when none is given", async () => {
     const { auth } = await registerGuest();
     const booking = (await book(auth, { date: daysAhead(35), partySize: 5 })).body;
-    const moved = await request(app).patch(`/api/reservations/${booking.id}`).set(auth).send({ date: daysAhead(36), startTime: "13:30" });
+    const moved = await request(app).patch(`/api/users/reservations/${booking.id}`).set(auth).send({ date: daysAhead(36), startTime: "13:30" });
     expect(moved.body).toMatchObject({ partySize: 5, tableIds: ["B1-MH-01", "B1-MH-02", "B1-MH-03"] });
     expect(await prisma.auditLog.count({ where: { action: "RESCHEDULE_RESERVATION", resourceId: booking.id } })).toBe(1);
   });
@@ -58,8 +58,8 @@ describe("booking", () => {
         tableIds: [],
       },
     });
-    const patch = await request(app).patch(`/api/reservations/${started.id}`).set(auth).send({ date: daysAhead(37), startTime: "11:00" });
-    const del = await request(app).delete(`/api/reservations/${started.id}`).set(auth);
+    const patch = await request(app).patch(`/api/users/reservations/${started.id}`).set(auth).send({ date: daysAhead(37), startTime: "11:00" });
+    const del = await request(app).delete(`/api/users/reservations/${started.id}`).set(auth);
     expect([patch.body, del.body]).toEqual([
       { message: "Reservation slot has already started" },
       { message: "Reservation slot has already started" },
@@ -69,8 +69,8 @@ describe("booking", () => {
   it("reads one booking by id, and 404s an unknown id", async () => {
     const { auth } = await registerGuest();
     const booking = (await book(auth, { date: daysAhead(41) })).body;
-    expect((await request(app).get(`/api/reservations/${booking.id}`).set(auth)).body).toEqual(booking);
-    expect((await request(app).get("/api/reservations/unknown").set(auth)).body).toEqual({ message: "Reservation not found" });
+    expect((await request(app).get(`/api/users/reservations/${booking.id}`).set(auth)).body).toEqual(booking);
+    expect((await request(app).get("/api/users/reservations/unknown").set(auth)).body).toEqual({ message: "Reservation not found" });
   });
 
   it("refuses a party the free rooms cannot seat", async () => {
