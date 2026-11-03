@@ -45,6 +45,18 @@ test("logout clears the session cookie so the session stops working", async ({ p
   await guest.dispose();
 });
 
+test("a POST from a foreign Origin is blocked", async ({ request }) => {
+  const res = await request.post("/api/auth/login", { headers: { Origin: "http://evil.example" }, data: { email: "admin@resortos.test", password: "Admin12345!" } });
+  expect(res.status()).toBe(403);
+  expect(await res.json()).toEqual({ message: "Cross-origin request blocked" });
+});
+
+test("a POST from the web app's Origin is not blocked", async ({ request }) => {
+  const res = await request.post("/api/auth/login", { headers: { Origin: "http://localhost:5173" }, data: { email: "admin@resortos.test", password: "wrong-password" } });
+  expect(res.status()).toBe(401);
+  expect(await res.json()).toEqual({ message: "Invalid email or password" });
+});
+
 test("registration rejects an invalid phone number", async ({ request }) => {
   const res = await request.post("/api/auth/register", { data: { email: "phone@test.dev", password: "Password123", name: "P", phone: "call me" } });
   expect(res.status()).toBe(400);

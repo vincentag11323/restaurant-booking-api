@@ -5,12 +5,15 @@ import helmet from "helmet";
 import { config } from "./config.js";
 import { adminRouter } from "./routes/admin.js";
 import { agentRouter } from "./routes/agent.js";
+import { HttpError } from "./lib/errors.js";
 import { jsonRateLimit } from "./lib/rate_limit.js";
 import { errorHandler, notFoundRoute } from "./middleware/error.js";
 import { authRouter } from "./routes/auth.js";
 import { menuRouter } from "./routes/menu.js";
 import { profileRouter } from "./routes/profile.js";
 import { availabilityRouter, reservationsRouter } from "./routes/reservations.js";
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export function createApp() {
   const app = express();
@@ -19,6 +22,12 @@ export function createApp() {
 
   app.use(helmet());
   app.use(cors({ origin: config.corsOrigin, credentials: true }));
+  // CSRF: on top of SameSite=Lax, a state-changing request sent from another site's page is refused.
+  app.use((req, _res, next) => {
+    const origin = req.get("origin");
+    if (origin !== undefined && origin !== config.corsOrigin && !SAFE_METHODS.has(req.method)) throw new HttpError(403, "Cross-origin request blocked");
+    next();
+  });
   app.use(express.json({ limit: "100kb" }));
   app.use(cookieParser());
 

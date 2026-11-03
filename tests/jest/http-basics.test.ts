@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "@jest/globals";
 import request from "supertest";
 import { prisma } from "../../src/lib/db.js";
+import { TEST_ENV } from "./global-setup.js";
 import { app, daysAhead, loginAdmin, registerGuest } from "./helpers.js";
 
 afterAll(() => prisma.$disconnect());
@@ -29,6 +30,23 @@ describe("HTTP basics", () => {
     const { auth } = await registerGuest();
     const res = await request(app).post("/api/reservations").set(auth).send({ branch: "BRANCH_1", sector: "MAIN_HALL", date: daysAhead(38), startTime: "11:00", partySize: 0 });
     expect(res.body).toEqual({ message: "partySize: Party size must be between 1 and 50" });
+  });
+});
+
+describe("CSRF origin rule", () => {
+  it("blocks a POST from a foreign Origin", async () => {
+    const res = await request(app).post("/api/auth/login").set("Origin", "http://evil.example").send({ email: "admin@resortos.test", password: "Admin12345!" });
+    expect([res.status, res.body]).toEqual([403, { message: "Cross-origin request blocked" }]);
+  });
+
+  it("lets a POST from the web app's Origin through", async () => {
+    const res = await request(app).post("/api/auth/login").set("Origin", TEST_ENV.CORS_ORIGIN).send({ email: "admin@resortos.test", password: "wrong-password" });
+    expect([res.status, res.body]).toEqual([401, { message: "Invalid email or password" }]);
+  });
+
+  it("lets a GET from a foreign Origin through", async () => {
+    const res = await request(app).get("/api/health").set("Origin", "http://evil.example");
+    expect(res.status).toBe(200);
   });
 });
 
