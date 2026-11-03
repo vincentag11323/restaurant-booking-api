@@ -13,5 +13,6 @@ export const config = {
   jwtAccessSecret: required("JWT_ACCESS_SECRET"),
   jwtRefreshSecret: required("JWT_REFRESH_SECRET"),
   utcOffset: process.env.RESTAURANT_UTC_OFFSET ?? "+07:00",
+  authRateLimit: Number(process.env.AUTH_RATE_LIMIT ?? 20),
   isProduction: process.env.NODE_ENV === "production",
 };

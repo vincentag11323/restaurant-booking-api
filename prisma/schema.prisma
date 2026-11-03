@@ -43,7 +43,7 @@ model User {
   phone        String?
   allergies    String[]
   role         Role          @default(USER)
-  createdAt    DateTime      @default(now())
+  createdAt    DateTime      @default(now()) @db.Timestamptz
   reservations Reservation[]
 }
 
@@ -60,24 +60,27 @@ model DiningTable {
 
 model Reservation {
   id              String             @id @default(cuid())
+  /// Short human code shown to guests, e.g. "RSV-7K3Q9X"
+  code            String             @unique
   userId          String
   user            User               @relation(fields: [userId], references: [id])
   branch          Branch
   sector          Sector
-  slotStart       DateTime
-  slotEnd         DateTime
+  slotStart       DateTime           @db.Timestamptz
+  slotEnd         DateTime           @db.Timestamptz
   partySize       Int
   specialRequests String?
   status          ReservationStatus  @default(CONFIRMED)
   /// Snapshot of assigned table/room IDs, kept after cancellation for the audit view.
   tableIds        String[]
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  cancelledAt     DateTime?
+  createdAt       DateTime           @default(now()) @db.Timestamptz
+  updatedAt       DateTime           @updatedAt @db.Timestamptz
+  cancelledAt     DateTime?          @db.Timestamptz
   allocations     ReservationTable[]
 
   @@index([userId])
   @@index([branch, slotStart])
+  @@index([status])
 }
 
 /// Live table locks. Rows are deleted on cancel/reschedule, which frees the table.
@@ -87,7 +90,7 @@ model ReservationTable {
   reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
   tableId       String
   table         DiningTable @relation(fields: [tableId], references: [id])
-  slotStart     DateTime
+  slotStart     DateTime    @db.Timestamptz
 
   @@id([reservationId, tableId])
   @@unique([tableId, slotStart])
@@ -106,7 +109,7 @@ model MenuItem {
 /// Append-only. UPDATE/DELETE are blocked by a DB trigger (see migration).
 model AuditLog {
   id         BigInt   @id @default(autoincrement())
-  timestamp  DateTime @default(now())
+  timestamp  DateTime @default(now()) @db.Timestamptz
   actorId    String?
   action     String
   resourceId String?

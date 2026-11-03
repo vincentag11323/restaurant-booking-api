@@ -5,9 +5,8 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "skipLibCheck": true,
-    "outDir": "dist",
-    "rootDir": "src",
+    "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["src", "tests", "prisma", "playwright.config.ts", "prisma.config.ts"]
 }
