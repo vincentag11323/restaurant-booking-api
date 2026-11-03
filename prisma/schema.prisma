@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Branch {
+  BRANCH_1
+  BRANCH_2
+}
+
+enum Sector {
+  MAIN_HALL
+  VIP_WING
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  SEATED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum MenuType {
+  SEASONAL_FINE_DINING
+  A_LA_CARTE
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  phone        String?
+  allergies    String[]
+  role         Role          @default(USER)
+  createdAt    DateTime      @default(now())
+  reservations Reservation[]
+}
+
+/// A two-seat table (MAIN_HALL) or a private room (VIP_WING). Seeded, never edited by the app.
+model DiningTable {
+  id          String             @id // e.g. "B1-MH-07", "B2-VIP-2"
+  branch      Branch
+  sector      Sector
+  seats       Int
+  allocations ReservationTable[]
+
+  @@index([branch, sector])
+}
+
+model Reservation {
+  id              String             @id @default(cuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id])
+  branch          Branch
+  sector          Sector
+  slotStart       DateTime
+  slotEnd         DateTime
+  partySize       Int
+  specialRequests String?
+  status          ReservationStatus  @default(CONFIRMED)
+  /// Snapshot of assigned table/room IDs, kept after cancellation for the audit view.
+  tableIds        String[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  cancelledAt     DateTime?
+  allocations     ReservationTable[]
+
+  @@index([userId])
+  @@index([branch, slotStart])
+}
+
+/// Live table locks. Rows are deleted on cancel/reschedule, which frees the table.
+/// The unique (tableId, slotStart) constraint makes double-booking impossible.
+model ReservationTable {
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  tableId       String
+  table         DiningTable @relation(fields: [tableId], references: [id])
+  slotStart     DateTime
+
+  @@id([reservationId, tableId])
+  @@unique([tableId, slotStart])
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  type        MenuType
+  priceCents  Int
+  allergens   String[]
+  chefPick    Boolean  @default(false)
+}
+
+/// Append-only. UPDATE/DELETE are blocked by a DB trigger (see migration).
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  timestamp  DateTime @default(now())
+  actorId    String?
+  action     String
+  resourceId String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+
+  @@index([action, timestamp])
+}
