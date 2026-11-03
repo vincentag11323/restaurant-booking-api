@@ -73,6 +73,20 @@ test.describe("admin booking log", () => {
     expect(await json.json()).toHaveLength(3);
   });
 
+  test("CSV export quotes commas and neutralises spreadsheet formulas", async ({ request }) => {
+    const admin = await loginAdmin(request);
+    const guest = await registerGuest(request, { name: "=HYPERLINK(evil)" });
+    const date = daysAhead(21);
+    await request.post("/api/reservations", {
+      headers: guest.headers,
+      data: { branch: "BRANCH_2", sector: "MAIN_HALL", date, startTime: "11:00", partySize: 2, specialRequests: 'Quiet table, "please"' },
+    });
+    const csv = await (await request.get(`/api/admin/reservations/export?from=${date}&to=${date}&branch=BRANCH_2`, { headers: admin.headers })).text();
+    const row = csv.trim().split("\n")[1];
+    expect(row).toContain(",'=HYPERLINK(evil),");
+    expect(row).toContain('"Quiet table, ""please"""');
+  });
+
   test("an unknown reservation detail is 404", async ({ request }) => {
     const { headers } = await loginAdmin(request);
     expect((await request.get("/api/admin/reservations/missing", { headers })).status()).toBe(404);
