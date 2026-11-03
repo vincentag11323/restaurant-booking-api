@@ -14,7 +14,7 @@ npm install            # also runs `prisma generate`
 npm run db:local       # terminal 1: embedded Postgres (PGlite) persisted in ./.pglite
 npm run db:migrate     # terminal 2
 npm run db:seed        # dining tables, menu, admin account (ADMIN_EMAIL / ADMIN_PASSWORD), assistant account storing only the SHA-256 of AGENT_API_KEY
-npm run dev            # http://localhost:4000/api/health
+npm run dev            # http://localhost:4000/api/public/health
 ```
 
 `npm run db:local` is for development only. To use a real Postgres instead, run `docker compose up -d` (or point `DATABASE_URL` at any Postgres 17) and skip `db:local`.

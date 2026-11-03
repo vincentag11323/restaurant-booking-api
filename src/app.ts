@@ -1,6 +1,6 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import express from "express";
+import express, { Router } from "express";
 import helmet from "helmet";
 import { config } from "./config.js";
 import { adminRouter } from "./routes/admin.js";
@@ -9,7 +9,7 @@ import { HttpError } from "./lib/errors.js";
 import { jsonRateLimit } from "./lib/rate_limit.js";
 import { errorHandler, notFoundRoute } from "./middleware/error.js";
 import { authRouter } from "./routes/auth.js";
-import { menuRouter } from "./routes/menu.js";
+import { menuRouter, recommendationsRouter } from "./routes/menu.js";
 import { profileRouter } from "./routes/profile.js";
 import { availabilityRouter, reservationsRouter } from "./routes/reservations.js";
 
@@ -31,17 +31,25 @@ export function createApp() {
   app.use(express.json({ limit: "100kb" }));
   app.use(cookieParser());
 
-  app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok" });
-  });
+  // Route groups (api_spec.md, "Route groups"): every path starts with one group.
+  const publicRoutes = Router()
+    .get("/health", (_req, res) => {
+      res.json({ status: "ok" });
+    })
+    .use("/menus", menuRouter)
+    .use("/availabilities", availabilityRouter);
+  app.use("/api/public", publicRoutes);
+
   const authLimiter = jsonRateLimit({ windowMs: 15 * 60_000, limit: config.authRateLimit, message: "Too many attempts. Please wait a few minutes and try again." });
   app.use("/api/auth", authLimiter, authRouter);
-  app.use("/api/me", profileRouter);
-  app.use("/api/menu", menuRouter);
-  app.use("/api/admin", adminRouter);
-  app.use("/api/agent", agentRouter);
-  app.use("/api/availability", availabilityRouter);
-  app.use("/api/reservations", reservationsRouter);
+
+  const userRoutes = Router()
+    .use("/me", profileRouter)
+    .use("/reservations", reservationsRouter)
+    .use("/menus/recommendations", recommendationsRouter);
+  app.use("/api/users", userRoutes);
+  app.use("/api/admins", adminRouter);
+  app.use("/api/agents", agentRouter);
 
   app.use(notFoundRoute);
   app.use(errorHandler);
