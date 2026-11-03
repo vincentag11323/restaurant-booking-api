@@ -19,13 +19,12 @@ export default async function globalSetup() {
 
   Object.assign(process.env, {
     DATABASE_URL: external ?? `postgresql://postgres:postgres@127.0.0.1:${DB_PORT}/postgres?sslmode=disable`,
-    JWT_ACCESS_SECRET: "test-access-secret-test-access-secret",
-    JWT_REFRESH_SECRET: "test-refresh-secret-test-refresh-secret",
+    SESSION_SECRET: "test-session-secret-test-session-secret",
     AUTH_RATE_LIMIT: "10000",
     ADMIN_EMAIL: "admin@resortos.test",
     ADMIN_PASSWORD: "Admin12345!",
-    AGENT_EMAIL: "assistant@resortos.internal",
-    AGENT_PASSWORD: "Agent12345!",
+    // Same key as tests/api/helpers.ts; the seed stores only its SHA-256.
+    AGENT_API_KEY: "test-agent-key-test-agent-key-test-agent-key",
     ERROR_LOG_PATH: `${process.cwd()}/test-results/errors-e2e.log`,
     ERROR_LOG_CONSOLE: "false",
   });

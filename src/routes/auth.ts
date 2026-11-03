@@ -6,13 +6,12 @@ import type { Role } from "../generated/prisma/enums.js";
 import { audit, checkFailedLogins } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { HttpError, badRequest } from "../lib/errors.js";
-import { REFRESH_TOKEN_TTL_MS, signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/tokens.js";
+import { SESSION_COOKIE, sessionCookieOptions, signSessionToken } from "../lib/tokens.js";
 import { parse } from "../lib/validate.js";
 import { publicUser } from "./profile.js";
 
 export const authRouter = Router();
 
-const REFRESH_COOKIE = "refreshToken";
 const BCRYPT_COST = 12;
 // Compared against when the email is unknown, so both failure paths take the same bcrypt time.
 const DUMMY_HASH = bcrypt.hashSync("timing-equaliser", BCRYPT_COST);
@@ -29,15 +28,9 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-function issueTokens(res: Response, user: { id: string; role: Role }) {
-  res.cookie(REFRESH_COOKIE, signRefreshToken(user.id), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: config.isProduction,
-    maxAge: REFRESH_TOKEN_TTL_MS,
-    path: "/api/auth",
-  });
-  return signAccessToken(user);
+/** Sets the session cookie: valid for SESSION_TTL from now and never extended. */
+function startSession(res: Response, user: { id: string; role: Role }) {
+  res.cookie(SESSION_COOKIE, signSessionToken(user), { ...sessionCookieOptions, maxAge: config.sessionTtlSeconds * 1000 });
 }
 
 authRouter.post("/register", async (req, res) => {
@@ -52,7 +45,8 @@ authRouter.post("/register", async (req, res) => {
     ? await prisma.user.update({ where: { id: existing.id }, data })
     : await prisma.user.create({ data: { ...data, email: input.email } });
   await audit(req, "REGISTER", { actorId: user.id, resourceId: user.id, metadata: { claimedGuestAccount: claimable } });
-  res.status(201).json({ accessToken: issueTokens(res, user), user: publicUser(user) });
+  startSession(res, user);
+  res.status(201).json({ user: publicUser(user) });
 });
 
 authRouter.post("/login", async (req, res) => {
@@ -66,24 +60,11 @@ authRouter.post("/login", async (req, res) => {
     throw new HttpError(401, "Invalid email or password");
   }
   await audit(req, "LOGIN_SUCCESS", { actorId: user.id });
-  res.json({ accessToken: issueTokens(res, user), user: publicUser(user) });
-});
-
-authRouter.post("/refresh", async (req, res) => {
-  const token: unknown = req.cookies?.[REFRESH_COOKIE];
-  let userId: string;
-  try {
-    if (typeof token !== "string") throw new Error("missing");
-    userId = verifyRefreshToken(token);
-  } catch {
-    throw new HttpError(401, "Invalid or expired refresh token");
-  }
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new HttpError(401, "Invalid or expired refresh token");
-  res.json({ accessToken: issueTokens(res, user), user: publicUser(user) });
+  startSession(res, user);
+  res.json({ user: publicUser(user) });
 });
 
 authRouter.post("/logout", (_req, res) => {
-  res.clearCookie(REFRESH_COOKIE, { path: "/api/auth" });
+  res.clearCookie(SESSION_COOKIE, sessionCookieOptions);
   res.json({ message: "Logged out" });
 });

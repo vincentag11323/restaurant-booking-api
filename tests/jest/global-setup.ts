@@ -9,13 +9,11 @@ const run = promisify(exec);
 
 export const TEST_ENV = {
   DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DB_PORT}/postgres?sslmode=disable`,
-  JWT_ACCESS_SECRET: "jest-access-secret-jest-access-secret",
-  JWT_REFRESH_SECRET: "jest-refresh-secret-jest-refresh-secret",
+  SESSION_SECRET: "jest-session-secret-jest-session-secret",
   AUTH_RATE_LIMIT: "10000",
   ADMIN_EMAIL: "admin@resortos.test",
   ADMIN_PASSWORD: "Admin12345!",
-  AGENT_EMAIL: "assistant@resortos.internal",
-  AGENT_PASSWORD: "Agent12345!",
+  AGENT_API_KEY: "jest-agent-key-jest-agent-key-jest-agent-key",
   ERROR_LOG_PATH: `${process.cwd()}/test-results/errors-jest.log`,
   ERROR_LOG_CONSOLE: "false",
   RESTAURANT_UTC_OFFSET: "+07:00",

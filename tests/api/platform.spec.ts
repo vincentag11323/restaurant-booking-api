@@ -19,8 +19,8 @@ test("a malformed JSON body is 400", async ({ request }) => {
   expect(await res.json()).toEqual({ message: "Malformed JSON body" });
 });
 
-test("a forged bearer token is 401", async ({ request }) => {
-  const res = await request.get("/api/me", { headers: { Authorization: "Bearer not-a-real-token" } });
+test("a forged session cookie is 401", async ({ request }) => {
+  const res = await request.get("/api/me", { headers: { Cookie: "session=not-a-real-token" } });
   expect(res.status()).toBe(401);
   expect(await res.json()).toEqual({ message: "Invalid or expired token" });
 });
@@ -31,13 +31,18 @@ test("security headers are set", async ({ request }) => {
   expect(res.headers()["x-powered-by"]).toBeUndefined();
 });
 
-test("logout clears the refresh cookie so refresh stops working", async ({ request }) => {
-  await registerGuest(request);
-  expect((await request.post("/api/auth/refresh")).status()).toBe(200);
-  const out = await request.post("/api/auth/logout");
+test("logout clears the session cookie so the session stops working", async ({ playwright, baseURL }) => {
+  const guest = await playwright.request.newContext({ baseURL });
+  const reg = await guest.post("/api/auth/register", { data: { email: `logout-${Date.now()}@test.dev`, password: "Password123", name: "Logout" } });
+  expect(reg.status()).toBe(201);
+  expect((await guest.get("/api/me")).status()).toBe(200);
+  const out = await guest.post("/api/auth/logout");
   expect(out.status()).toBe(200);
   expect(await out.json()).toEqual({ message: "Logged out" });
-  expect((await request.post("/api/auth/refresh")).status()).toBe(401);
+  const me = await guest.get("/api/me");
+  expect(me.status()).toBe(401);
+  expect(await me.json()).toEqual({ message: "Authentication required" });
+  await guest.dispose();
 });
 
 test("registration rejects an invalid phone number", async ({ request }) => {

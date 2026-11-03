@@ -1,11 +1,19 @@
 import { expect, test } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 import { ADMIN, registerGuest } from "./helpers.js";
 
 test.describe("guest auth", () => {
-  test("registering returns an access token and the public profile", async ({ request }) => {
+  test("registering returns the public profile and a session cookie", async ({ request }) => {
     const { user, email } = await registerGuest(request);
     expect(user).toEqual({ id: expect.any(String), email, name: "Test Guest", phone: "+62 812 0000 0000", allergies: [], role: "USER" });
     expect(user).not.toHaveProperty("passwordHash");
+
+    const res = await request.post("/api/auth/register", { data: { email: `cookie-${randomUUID()}@test.dev`, password: "Password123", name: "Cookie" } });
+    expect(res.status()).toBe(201);
+    expect(Object.keys(await res.json())).toEqual(["user"]);
+    const cookie = res.headersArray().find((h) => h.name.toLowerCase() === "set-cookie")?.value ?? "";
+    expect(cookie).toMatch(/^session=/);
+    for (const attribute of ["Max-Age=3600", "Path=/", "HttpOnly", "SameSite=Lax"]) expect(cookie).toContain(attribute);
   });
 
   test("registering an existing email is rejected", async ({ request }) => {
@@ -27,23 +35,29 @@ test.describe("guest auth", () => {
     expect(await res.json()).toEqual({ message: "Invalid email or password" });
   });
 
-  test("the refresh cookie issues a new access token", async ({ request }) => {
-    await registerGuest(request);
-    const res = await request.post("/api/auth/refresh");
+  test("the session cookie authenticates GET /api/me", async ({ request }) => {
+    const { headers, email } = await registerGuest(request);
+    const res = await request.get("/api/me", { headers });
     expect(res.status()).toBe(200);
-    expect((await res.json()).accessToken).toEqual(expect.any(String));
+    expect((await res.json()).email).toBe(email);
   });
 
-  test("refresh without a cookie gets 401", async ({ playwright, baseURL }) => {
-    const fresh = await playwright.request.newContext({ baseURL });
-    const res = await fresh.post("/api/auth/refresh");
+  test("there is no refresh route", async ({ request }) => {
+    const res = await request.post("/api/auth/refresh");
+    expect(res.status()).toBe(404);
+    expect(await res.json()).toEqual({ message: "Route not found" });
+  });
+
+  test("the session sent as a Bearer token gets 401", async ({ request }) => {
+    const { headers } = await registerGuest(request);
+    const res = await request.get("/api/me", { headers: { Authorization: `Bearer ${headers.Cookie.slice("session=".length)}` } });
     expect(res.status()).toBe(401);
-    await fresh.dispose();
+    expect(await res.json()).toEqual({ message: "Authentication required" });
   });
 });
 
 test.describe("profile", () => {
-  test("requires a token", async ({ request }) => {
+  test("requires a session", async ({ request }) => {
     const res = await request.get("/api/me");
     expect(res.status()).toBe(401);
     expect(await res.json()).toEqual({ message: "Authentication required" });

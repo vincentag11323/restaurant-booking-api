@@ -1,7 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
+import { prisma } from "../lib/db.js";
 import { HttpError } from "../lib/errors.js";
 import { type Permission, can } from "../lib/permissions.js";
-import { type AuthUser, verifyAccessToken } from "../lib/tokens.js";
+import { type AuthUser, SESSION_COOKIE, hashApiKey, verifySessionToken } from "../lib/tokens.js";
 
 declare global {
   namespace Express {
@@ -11,16 +12,27 @@ declare global {
   }
 }
 
-/** Authenticates the bearer token, then checks the role grants the permission (401 without a valid token, 403 without the permission). */
+/** The assistant sends X-Agent-Key; guests and admins send the session cookie. Authorization is never read. */
+async function authenticate(req: Request): Promise<AuthUser> {
+  const apiKey = req.get("x-agent-key");
+  if (apiKey !== undefined) {
+    const agent = await prisma.user.findFirst({ where: { apiKeyHash: hashApiKey(apiKey), role: "AGENT" }, select: { id: true, role: true } });
+    if (!agent) throw new HttpError(401, "Invalid API key");
+    return agent;
+  }
+  const token: unknown = req.cookies?.[SESSION_COOKIE];
+  if (typeof token !== "string") throw new HttpError(401, "Authentication required");
+  try {
+    return verifySessionToken(token);
+  } catch {
+    throw new HttpError(401, "Invalid or expired token");
+  }
+}
+
+/** Authenticates the caller, then checks the role grants the permission (401 without valid credentials, 403 without the permission). */
 export function requirePermission(permission: Permission) {
-  return (req: Request, _res: Response, next: NextFunction) => {
-    const header = req.get("authorization");
-    if (!header?.startsWith("Bearer ")) throw new HttpError(401, "Authentication required");
-    try {
-      req.user = verifyAccessToken(header.slice("Bearer ".length));
-    } catch {
-      throw new HttpError(401, "Invalid or expired token");
-    }
+  return async (req: Request, _res: Response, next: NextFunction) => {
+    req.user = await authenticate(req);
     if (!can(req.user.role, permission)) throw new HttpError(403, "Forbidden");
     next();
   };

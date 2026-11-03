@@ -1,6 +1,8 @@
 import { afterAll, describe, expect, it } from "@jest/globals";
+import jwt from "jsonwebtoken";
 import request from "supertest";
 import { prisma } from "../../src/lib/db.js";
+import { TEST_ENV } from "./global-setup.js";
 import { ADMIN, app, registerGuest } from "./helpers.js";
 
 afterAll(() => prisma.$disconnect());
@@ -41,25 +43,60 @@ describe("auth", () => {
     expect(alerts).toBe(1);
   });
 
-  it("refreshes with the cookie and rejects a tampered or orphaned one", async () => {
-    const { agent, user } = await registerGuest();
-    const ok = await agent.post("/api/auth/refresh");
-    expect(ok.status).toBe(200);
-    expect(ok.headers["set-cookie"]?.[0]).toMatch(/refreshToken=.*HttpOnly/);
+  it("signs in with a 1-hour HttpOnly session cookie and returns only the user", async () => {
+    const res = await request(app).post("/api/auth/register").send({ email: `jest-cookie-${Date.now()}@test.dev`, password: "Password123", name: "Cookie" });
+    expect(res.status).toBe(201);
+    expect(Object.keys(res.body)).toEqual(["user"]);
+    const cookie: string = res.headers["set-cookie"]?.[0] ?? "";
+    expect(cookie).toMatch(/^session=/);
+    expect(cookie).toContain("Max-Age=3600");
+    expect(cookie).toContain("Path=/");
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toContain("SameSite=Lax");
 
-    const tampered = await request(app).post("/api/auth/refresh").set("Cookie", "refreshToken=forged.token.value");
-    expect(tampered.status).toBe(401);
-
-    await prisma.user.delete({ where: { id: user.id } });
-    const orphaned = await agent.post("/api/auth/refresh");
-    expect(orphaned.status).toBe(401);
-    expect(orphaned.body).toEqual({ message: "Invalid or expired refresh token" });
+    const login = await request(app).post("/api/auth/login").send(ADMIN);
+    expect(Object.keys(login.body)).toEqual(["user"]);
+    expect(login.headers["set-cookie"]?.[0]).toMatch(/^session=.*Max-Age=3600/);
   });
 
-  it("logs out by clearing the cookie", async () => {
+  it("never re-issues the session cookie on later calls", async () => {
+    const { auth } = await registerGuest();
+    const me = await request(app).get("/api/me").set(auth);
+    expect(me.status).toBe(200);
+    expect(me.headers["set-cookie"]).toBeUndefined();
+  });
+
+  it("rejects a forged, expired or wrongly signed session cookie", async () => {
+    const { user } = await registerGuest();
+    const expired = jwt.sign({ role: "USER", exp: Math.floor(Date.now() / 1000) - 60 }, TEST_ENV.SESSION_SECRET, { subject: user.id });
+    const wrongSecret = jwt.sign({ role: "USER" }, "some-other-secret-some-other-secret", { subject: user.id, expiresIn: 3600 });
+    for (const token of ["forged.token.value", expired, wrongSecret]) {
+      const res = await request(app).get("/api/me").set("Cookie", `session=${token}`);
+      expect([res.status, res.body]).toEqual([401, { message: "Invalid or expired token" }]);
+    }
+  });
+
+  it("does not accept the session as a Bearer token", async () => {
+    const { auth } = await registerGuest();
+    const token = auth.Cookie.slice("session=".length);
+    const res = await request(app).get("/api/me").set("Authorization", `Bearer ${token}`);
+    expect([res.status, res.body]).toEqual([401, { message: "Authentication required" }]);
+  });
+
+  it("logs out by clearing the session cookie", async () => {
     const { agent } = await registerGuest();
-    expect((await agent.post("/api/auth/logout")).body).toEqual({ message: "Logged out" });
-    expect((await agent.post("/api/auth/refresh")).status).toBe(401);
+    const out = await agent.post("/api/auth/logout");
+    expect(out.body).toEqual({ message: "Logged out" });
+    expect(out.headers["set-cookie"]?.[0]).toMatch(/^session=;.*Path=\/;.*Expires=Thu, 01 Jan 1970/);
+    const me = await agent.get("/api/me");
+    expect([me.status, me.body]).toEqual([401, { message: "Authentication required" }]);
+  });
+
+  it("treats a valid session for a deleted account as expired", async () => {
+    const { auth, user } = await registerGuest();
+    await prisma.user.delete({ where: { id: user.id } });
+    const res = await request(app).get("/api/me").set(auth);
+    expect([res.status, res.body]).toEqual([401, { message: "Invalid or expired token" }]);
   });
 });
 
@@ -71,8 +108,9 @@ describe("profile", () => {
     expect(res.body).toMatchObject({ allergies: ["gluten"], phone: null });
   });
 
-  it("rejects a missing or malformed bearer header", async () => {
-    expect((await request(app).get("/api/me").set("Authorization", "Token abc")).body).toEqual({ message: "Authentication required" });
+  it("rejects a request without a session cookie", async () => {
+    const res = await request(app).get("/api/me");
+    expect([res.status, res.body]).toEqual([401, { message: "Authentication required" }]);
   });
 });
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { User } from "../generated/prisma/client.js";
 import { audit } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
+import { HttpError } from "../lib/errors.js";
 import { parse } from "../lib/validate.js";
 import { currentUser, requirePermission } from "../middleware/auth.js";
 
@@ -19,7 +20,9 @@ const updateProfileSchema = z.object({
 });
 
 profileRouter.get("/", requirePermission("profile:own"), async (req, res) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: currentUser(req).id } });
+  const user = await prisma.user.findUnique({ where: { id: currentUser(req).id } });
+  // A session that outlives its account (deleted user) is treated as expired.
+  if (!user) throw new HttpError(401, "Invalid or expired token");
   res.json(publicUser(user));
 });
 

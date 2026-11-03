@@ -20,8 +20,8 @@ describe("HTTP basics", () => {
     expect([res.status, res.body]).toEqual([400, { message: "Malformed JSON body" }]);
   });
 
-  it("rejects a forged token", async () => {
-    const res = await request(app).get("/api/reservations").set("Authorization", "Bearer forged");
+  it("rejects a forged session cookie", async () => {
+    const res = await request(app).get("/api/reservations").set("Cookie", "session=forged");
     expect([res.status, res.body]).toEqual([401, { message: "Invalid or expired token" }]);
   });
 

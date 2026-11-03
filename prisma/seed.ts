@@ -1,10 +1,12 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/db.js";
+import { hashApiKey } from "../src/lib/tokens.js";
 import type { Branch, MenuType, Sector } from "../src/generated/prisma/enums.js";
 import { MAIN_HALL_TABLE_SEATS, VIP_ROOM_SEATS } from "../src/domain/allocation.js";
 
 const MAIN_HALL_TABLES = 50;
 const VIP_ROOMS = 4;
+const AGENT_EMAIL = "assistant@resortos.internal";
 
 const BRANCHES: { branch: Branch; prefix: string }[] = [
   { branch: "BRANCH_1", prefix: "B1" },
@@ -42,23 +44,31 @@ const MENU: { name: string; description: string; type: MenuType; priceCents: num
 ];
 
 async function main() {
+  const agentApiKey = process.env.AGENT_API_KEY;
+  if (agentApiKey && agentApiKey.length < 32) throw new Error("AGENT_API_KEY must be at least 32 characters");
+
   await prisma.diningTable.createMany({ data: diningTables(), skipDuplicates: true });
 
   for (const item of MENU) {
     await prisma.menuItem.upsert({ where: { name: item.name }, update: item, create: item });
   }
 
-  const accounts = [
-    { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD, name: "Restaurant Admin", role: "ADMIN" as const },
-    // The AI booking assistant signs in as this account (role AGENT, agent_spec.md §5.5).
-    { email: process.env.AGENT_EMAIL, password: process.env.AGENT_PASSWORD, name: "AI booking assistant", role: "AGENT" as const },
-  ];
-  for (const { email, password, name, role } of accounts) {
-    if (!email || !password) continue;
+  const { ADMIN_EMAIL: adminEmail, ADMIN_PASSWORD: adminPassword } = process.env;
+  if (adminEmail && adminPassword) {
     await prisma.user.upsert({
-      where: { email: email.toLowerCase() },
+      where: { email: adminEmail.toLowerCase() },
       update: {},
-      create: { email: email.toLowerCase(), name, role, passwordHash: await bcrypt.hash(password, 12) },
+      create: { email: adminEmail.toLowerCase(), name: "Restaurant Admin", role: "ADMIN", passwordHash: await bcrypt.hash(adminPassword, 12) },
+    });
+  }
+
+  // The AI booking assistant's account (role AGENT, agent_spec.md §5.5): no password, only the SHA-256 of AGENT_API_KEY.
+  if (agentApiKey) {
+    const apiKeyHash = hashApiKey(agentApiKey);
+    await prisma.user.upsert({
+      where: { email: AGENT_EMAIL },
+      update: { apiKeyHash, passwordHash: null },
+      create: { email: AGENT_EMAIL, name: "AI booking assistant", role: "AGENT", passwordHash: null, apiKeyHash },
     });
   }
 }

@@ -18,21 +18,20 @@ const env = {
   DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${port}/postgres?sslmode=disable`,
   ADMIN_EMAIL: "admin@resortos.test",
   ADMIN_PASSWORD: "Admin12345!",
-  AGENT_EMAIL: "assistant@resortos.internal",
-  AGENT_PASSWORD: "Agent12345!",
+  AGENT_API_KEY: "e2e-only-agent-key-e2e-only-agent-key-0001",
 };
 await run("npx prisma migrate deploy", { env });
 await run("npx tsx prisma/seed.ts", { env });
 await run("npx tsx prisma/seed-test.ts", { env });
 
 console.info(`
-  ┌──────────────────────────────────────────────────────────────┐
-  │  TEST DATABASE (fake data)  postgres://127.0.0.1:${port}        │
-  │  admin@resortos.test / Admin12345!                           │
-  │  assistant@resortos.internal / Agent12345!  (role AGENT)     │
-  │  ayu@guests.test, budi@guests.test / Password123             │
-  │  citra@guests.test: guest account, not signed up             │
-  └──────────────────────────────────────────────────────────────┘`);
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  TEST DATABASE (fake data)  postgres://127.0.0.1:${port}                    │
+  │  admin@resortos.test / Admin12345!                                       │
+  │  assistant@resortos.internal: no password, X-Agent-Key only (role AGENT) │
+  │  ayu@guests.test, budi@guests.test / Password123                         │
+  │  citra@guests.test: guest account, not signed up                         │
+  └──────────────────────────────────────────────────────────────────────────┘`);
 
 const stop = async () => {
   await server.stop();

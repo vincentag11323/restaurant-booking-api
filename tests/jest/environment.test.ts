@@ -24,7 +24,7 @@ function load<T>(path: string, env: Record<string, string | undefined>): T {
 
 describe("config", () => {
   it("fails fast when a required secret is missing", () => {
-    expect(() => load("../../src/config.js", { JWT_ACCESS_SECRET: undefined })).toThrow("Missing required env var: JWT_ACCESS_SECRET");
+    expect(() => load("../../src/config.js", { SESSION_SECRET: undefined })).toThrow("Missing required env var: SESSION_SECRET");
   });
 
   it("falls back to documented defaults", () => {
@@ -37,7 +37,7 @@ describe("config", () => {
       ERROR_LOG_PATH: undefined,
       ERROR_LOG_MAX_BYTES: undefined,
       ERROR_LOG_CONSOLE: undefined,
-      ACCESS_TOKEN_TTL: undefined,
+      SESSION_TTL: undefined,
     });
     expect(config).toMatchObject({
       port: 4000,
@@ -46,18 +46,27 @@ describe("config", () => {
       authRateLimit: 20,
       isProduction: false,
       errorLog: { path: "logs/errors.log", maxBytes: 5 * 1024 * 1024, console: true },
-      accessTokenTtl: "15m",
+      sessionTtlSeconds: 3600,
     });
+  });
+
+  it("reads SESSION_TTL in seconds, minutes or hours", () => {
+    const ttl = (value: string) => load<typeof import("../../src/config.js")>("../../src/config.js", { SESSION_TTL: value }).config.sessionTtlSeconds;
+    expect([ttl("8s"), ttl("30m"), ttl("2h")]).toEqual([8, 1800, 7200]);
+  });
+
+  it("refuses an invalid SESSION_TTL at startup", () => {
+    expect(() => load("../../src/config.js", { SESSION_TTL: "1d" })).toThrow("Invalid SESSION_TTL: 1d (use e.g. 1h, 30m or 8s)");
   });
 });
 
 describe("production mode", () => {
-  it("trusts the hosting proxy and marks the refresh cookie Secure", async () => {
+  it("trusts the hosting proxy and marks the session cookie Secure", async () => {
     const { createApp } = load<typeof import("../../src/app.js")>("../../src/app.js", { NODE_ENV: "production" });
     const app: Express = createApp();
     expect(app.get("trust proxy")).toBe(1);
     const res = await request(app).post("/api/auth/login").send({ email: "admin@resortos.test", password: "Admin12345!" });
-    expect(res.headers["set-cookie"]?.[0]).toContain("Secure");
+    expect(res.headers["set-cookie"]?.[0]).toMatch(/^session=.*; Secure/);
     const { prisma } = load<typeof import("../../src/lib/db.js")>("../../src/lib/db.js", {});
     await prisma.$disconnect();
   });

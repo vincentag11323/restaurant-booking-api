@@ -15,7 +15,7 @@
     "test:e2e": "playwright test",
     "test:jest": "jest --coverage",
     "db-test": "tsx scripts/db-test.ts",
-    "start:test": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres?sslmode=disable PORT=4400 CORS_ORIGIN=http://localhost:5190 AUTH_RATE_LIMIT=100000 ERROR_LOG_PATH=logs/errors-test.log ACCESS_TOKEN_TTL=8s tsx src/index.ts",
+    "start:test": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres?sslmode=disable PORT=4400 CORS_ORIGIN=http://localhost:5190 AUTH_RATE_LIMIT=100000 ERROR_LOG_PATH=logs/errors-test.log SESSION_TTL=8s SESSION_SECRET=e2e-only-session-secret-0001-0001 tsx src/index.ts",
     "test:pg": "test -n \"$TEST_DATABASE_URL\" || (echo \"Set TEST_DATABASE_URL to an empty PostgreSQL database\" && exit 1); npx playwright test && npx jest"
   },
   "license": "UNLICENSED",

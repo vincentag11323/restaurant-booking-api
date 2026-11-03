@@ -1,16 +1,15 @@
-import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it, jest } from "@jest/globals";
+import { createHash, randomUUID } from "node:crypto";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+import { afterAll, describe, expect, it, jest } from "@jest/globals";
 import request from "supertest";
 import { prisma } from "../../src/lib/db.js";
+import { TEST_ENV } from "./global-setup.js";
 import { ADMIN, app, daysAhead, registerGuest } from "./helpers.js";
 
-const AGENT = { email: "assistant@resortos.internal", password: "Agent12345!" };
-let agent: Record<string, string>;
+const AGENT_EMAIL = "assistant@resortos.internal";
+const agent = { "X-Agent-Key": TEST_ENV.AGENT_API_KEY };
 
-beforeAll(async () => {
-  const res = await request(app).post("/api/auth/login").send(AGENT);
-  agent = { Authorization: `Bearer ${res.body.accessToken}` };
-});
 afterAll(() => prisma.$disconnect());
 
 const email = () => `jest-agent-${randomUUID()}@test.dev`;
@@ -54,7 +53,7 @@ describe("agent booking", () => {
   });
 
   it("won't book under an admin or assistant account's email", async () => {
-    for (const staffEmail of [ADMIN.email, AGENT.email]) {
+    for (const staffEmail of [ADMIN.email, AGENT_EMAIL]) {
       expect((await book({ email: staffEmail, ...booking(54) })).body).toEqual({ message: "This email can't be booked through the assistant" });
     }
   });
@@ -109,6 +108,34 @@ describe("agent guest lookup", () => {
   it("refuses anything but a single exact email", async () => {
     expect((await lookup({ email: "gmail" })).status).toBe(400);
     expect((await lookup({ emails: ["a@b.co", "c@d.co"] })).status).toBe(400);
+  });
+});
+
+describe("agent API key", () => {
+  it("rejects a wrong X-Agent-Key", async () => {
+    const res = await request(app).post("/api/agent/guests/lookup").set("X-Agent-Key", "wrong-key-wrong-key-wrong-key-wrong-key").send({ email: "a@b.co" });
+    expect([res.status, res.body]).toEqual([401, { message: "Invalid API key" }]);
+  });
+
+  it("does not accept a guest session sent as a Bearer token", async () => {
+    const guest = await registerGuest();
+    const res = await request(app).post("/api/agent/guests/lookup").set("Authorization", `Bearer ${guest.auth.Cookie.slice("session=".length)}`).send({ email: "a@b.co" });
+    expect([res.status, res.body]).toEqual([401, { message: "Authentication required" }]);
+  });
+
+  it("the assistant's account can't sign in with a password", async () => {
+    const res = await request(app).post("/api/auth/login").send({ email: AGENT_EMAIL, password: "Agent12345!" });
+    expect([res.status, res.body]).toEqual([401, { message: "Invalid email or password" }]);
+  });
+
+  it("the seed stores only the SHA-256 of the key and no password", async () => {
+    const account = await prisma.user.findUniqueOrThrow({ where: { email: AGENT_EMAIL } });
+    expect(account).toMatchObject({ role: "AGENT", passwordHash: null, apiKeyHash: createHash("sha256").update(TEST_ENV.AGENT_API_KEY).digest("hex") });
+  });
+
+  it("the seed refuses a key shorter than 32 characters", async () => {
+    const run = promisify(exec);
+    await expect(run("npx tsx prisma/seed.ts", { env: { ...process.env, AGENT_API_KEY: "too-short" } })).rejects.toThrow("AGENT_API_KEY must be at least 32 characters");
   });
 });
 
