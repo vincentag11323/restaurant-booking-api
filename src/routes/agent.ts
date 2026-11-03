@@ -1,11 +1,11 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { bookReservation, reservationSelect } from "../domain/reservations.js";
 import { audit } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { badRequest } from "../lib/errors.js";
 import { notify } from "../lib/notify.js";
+import { jsonRateLimit } from "../lib/rate_limit.js";
 import { parse } from "../lib/validate.js";
 import { currentUser, requirePermission } from "../middleware/auth.js";
 import { createSchema } from "./reservations.js";
@@ -13,7 +13,14 @@ import { createSchema } from "./reservations.js";
 /** Routes for the AI booking assistant (role AGENT). Thin on purpose: booking reuses bookReservation(). */
 export const agentRouter = Router();
 
-const MAX_UPCOMING_ASSISTANT_BOOKINGS = 2;
+/** Owner rule: 1 upcoming assistant booking until the email signs up, then 2 (agent_spec.md §5.4). */
+const LIMIT_NOT_SIGNED_UP = 1;
+const LIMIT_SIGNED_UP = 2;
+const NOT_SIGNED_UP_MESSAGE = "This email already has a booking made with the assistant. To book a different time, sign up with this email in the app, cancel that booking there, then ask me again.";
+
+function assistantBookingLimit(guest: { passwordHash: string | null } | null): number {
+  return guest?.passwordHash ? LIMIT_SIGNED_UP : LIMIT_NOT_SIGNED_UP;
+}
 
 const emailSchema = z.email().max(254).transform((e) => e.toLowerCase());
 
@@ -58,8 +65,9 @@ agentRouter.post("/reservations", requirePermission("reservation:create_on_behal
   // confirmations for one email queue up instead of all reading the same count.
   const reservation = await bookReservation(booking, { userId: guest.id, createdById: agent.id, source: "AGENT", idempotencyKey }, async (tx) => {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${guest.id} FOR UPDATE`;
-    if ((await upcomingAssistantBookings(guest.id, tx)) >= MAX_UPCOMING_ASSISTANT_BOOKINGS) {
-      throw badRequest(`This email already has ${MAX_UPCOMING_ASSISTANT_BOOKINGS} upcoming assistant bookings. Sign in to manage them.`);
+    const limit = assistantBookingLimit(guest);
+    if ((await upcomingAssistantBookings(guest.id, tx)) >= limit) {
+      throw badRequest(limit === LIMIT_SIGNED_UP ? `This email already has ${LIMIT_SIGNED_UP} upcoming assistant bookings. Sign in to manage them.` : NOT_SIGNED_UP_MESSAGE);
     }
   });
   await audit(req, "CREATE_RESERVATION", { resourceId: reservation.id, metadata: { source: "AGENT", onBehalfOf: guest.id, clientIp } });
@@ -67,13 +75,17 @@ agentRouter.post("/reservations", requirePermission("reservation:create_on_behal
   res.status(201).json(reservation);
 });
 
-const lookupLimiter = rateLimit({ windowMs: 60_000, limit: 60, message: { message: "Too many lookups. Please slow down." } });
+const lookupLimiter = jsonRateLimit({ windowMs: 60_000, limit: 60, message: "Too many lookups. Please slow down." });
 
 /** One guest per request, exact email, minimal answer. Listing and searching are admin-only. */
 agentRouter.post("/guests/lookup", requirePermission("guest:read_one"), lookupLimiter, async (req, res) => {
   const { email } = parse(z.object({ email: emailSchema }), req.body);
-  const guest = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true } });
-  const exists = guest?.role === "USER";
-  await audit(req, "VIEW_GUEST", { resourceId: guest?.id, metadata: { found: exists } });
-  res.json({ exists, upcomingAssistantBookings: exists ? await upcomingAssistantBookings(guest.id) : 0 });
+  const found = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, passwordHash: true } });
+  const guest = found?.role === "USER" ? found : null;
+  await audit(req, "VIEW_GUEST", { resourceId: found?.id, metadata: { found: Boolean(guest) } });
+  res.json({
+    exists: Boolean(guest),
+    upcomingAssistantBookings: guest ? await upcomingAssistantBookings(guest.id) : 0,
+    assistantBookingLimit: assistantBookingLimit(guest),
+  });
 });

@@ -1,11 +1,11 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
-import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { config } from "./config.js";
 import { adminRouter } from "./routes/admin.js";
 import { agentRouter } from "./routes/agent.js";
+import { jsonRateLimit } from "./lib/rate_limit.js";
 import { errorHandler, notFoundRoute } from "./middleware/error.js";
 import { authRouter } from "./routes/auth.js";
 import { menuRouter } from "./routes/menu.js";
@@ -25,11 +25,7 @@ export function createApp() {
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
   });
-  const authLimiter = rateLimit({
-    windowMs: 15 * 60_000,
-    limit: config.authRateLimit,
-    message: { message: "Too many attempts. Please wait a few minutes and try again." },
-  });
+  const authLimiter = jsonRateLimit({ windowMs: 15 * 60_000, limit: config.authRateLimit, message: "Too many attempts. Please wait a few minutes and try again." });
   app.use("/api/auth", authLimiter, authRouter);
   app.use("/api/me", profileRouter);
   app.use("/api/menu", menuRouter);

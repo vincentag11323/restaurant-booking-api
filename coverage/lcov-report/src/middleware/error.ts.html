@@ -25,28 +25,28 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>20/20</span>
+                <span class='fraction'>26/26</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>10/10</span>
+                <span class='fraction'>15/15</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>20/20</span>
+                <span class='fraction'>26/26</span>
             </div>
         
             
@@ -83,45 +83,63 @@
 <a name='L18'></a><a href='#L18'>18</a>
 <a name='L19'></a><a href='#L19'>19</a>
 <a name='L20'></a><a href='#L20'>20</a>
-<a name='L21'></a><a href='#L21'>21</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">49x</span>
+<span class="cline-any cline-yes">49x</span>
+<span class="cline-any cline-yes">49x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">42x</span>
-<span class="cline-any cline-yes">38x</span>
-<span class="cline-any cline-yes">38x</span>
-<span class="cline-any cline-yes">38x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">42x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">46x</span>
+<span class="cline-any cline-yes">41x</span>
+<span class="cline-any cline-yes">41x</span>
+<span class="cline-any cline-yes">41x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">46x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">46x</span>
+<span class="cline-any cline-yes">46x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { NextFunction, Request, Response } from "express";
+import { logFailure } from "../lib/error_log.js";
 import { HttpError } from "../lib/errors.js";
 &nbsp;
-export function notFoundRoute(_req: Request, res: Response) {
-  res.status(404).json({ message: "Route not found" });
+/** Every failed response goes through here so it's logged (api_spec.md §8). */
+export function sendFailure(req: Request, res: Response, status: number, message: string, error?: Error) {
+  logFailure({ status, method: req.method, path: req.originalUrl.split("?")[0], message, userId: req.user?.id, ip: req.ip, error });
+  res.status(status).json({ message });
 }
 &nbsp;
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+export function notFoundRoute(req: Request, res: Response) {
+  sendFailure(req, res, 404, "Route not found");
+}
+&nbsp;
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof HttpError) {
-    res.status(err.status).json({ message: err.message });
+    sendFailure(req, res, err.status, err.message);
     return;
   }
   // Malformed JSON from express.json()
   if (typeof err === "object" &amp;&amp; err !== null &amp;&amp; "type" in err &amp;&amp; err.type === "entity.parse.failed") {
-    res.status(400).json({ message: "Malformed JSON body" });
+    sendFailure(req, res, 400, "Malformed JSON body");
     return;
   }
-  console.error(err);
-  res.status(500).json({ message: "Internal server error" });
+  sendFailure(req, res, 500, "Internal server error", err instanceof Error ? err : new Error(String(err)));
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -130,7 +148,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-03T09:23:06.402Z
+                at 2026-11-03T09:55:13.270Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

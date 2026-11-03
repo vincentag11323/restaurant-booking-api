@@ -31,9 +31,10 @@ describe("error handler", () => {
   it("hides unexpected errors behind a generic 500", () => {
     const res = fakeRes();
     const spy = jest.spyOn(console, "error").mockImplementation(() => {});
-    errorHandler(new Error("secret stack"), {} as Request, res, next);
-    errorHandler("a thrown string", {} as Request, res, next);
-    errorHandler(null, {} as Request, res, next);
+    const req = { method: "GET", originalUrl: "/api/x?q=1", ip: "1.2.3.4" } as Request;
+    errorHandler(new Error("secret stack"), req, res, next);
+    errorHandler("a thrown string", req, res, next);
+    errorHandler(null, req, res, next);
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ message: "Internal server error" });
     expect(res.json).toHaveBeenCalledTimes(3);

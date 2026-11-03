@@ -24,6 +24,8 @@ export default async function globalSetup() {
     ADMIN_PASSWORD: "Admin12345!",
     AGENT_EMAIL: "assistant@resortos.internal",
     AGENT_PASSWORD: "Agent12345!",
+    ERROR_LOG_PATH: `${process.cwd()}/test-results/errors-e2e.log`,
+    ERROR_LOG_CONSOLE: "false",
   });
   await run("npx prisma migrate deploy", { env: process.env });
   await run("npx tsx prisma/seed.ts", { env: process.env });

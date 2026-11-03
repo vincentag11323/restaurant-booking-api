@@ -1,20 +1,26 @@
 import type { NextFunction, Request, Response } from "express";
+import { logFailure } from "../lib/error_log.js";
 import { HttpError } from "../lib/errors.js";
 
-export function notFoundRoute(_req: Request, res: Response) {
-  res.status(404).json({ message: "Route not found" });
+/** Every failed response goes through here so it's logged (api_spec.md §8). */
+export function sendFailure(req: Request, res: Response, status: number, message: string, error?: Error) {
+  logFailure({ status, method: req.method, path: req.originalUrl.split("?")[0], message, userId: req.user?.id, ip: req.ip, error });
+  res.status(status).json({ message });
 }
 
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+export function notFoundRoute(req: Request, res: Response) {
+  sendFailure(req, res, 404, "Route not found");
+}
+
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof HttpError) {
-    res.status(err.status).json({ message: err.message });
+    sendFailure(req, res, err.status, err.message);
     return;
   }
   // Malformed JSON from express.json()
   if (typeof err === "object" && err !== null && "type" in err && err.type === "entity.parse.failed") {
-    res.status(400).json({ message: "Malformed JSON body" });
+    sendFailure(req, res, 400, "Malformed JSON body");
     return;
   }
-  console.error(err);
-  res.status(500).json({ message: "Internal server error" });
+  sendFailure(req, res, 500, "Internal server error", err instanceof Error ? err : new Error(String(err)));
 }

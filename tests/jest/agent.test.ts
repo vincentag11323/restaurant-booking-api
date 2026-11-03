@@ -59,21 +59,24 @@ describe("agent booking", () => {
     }
   });
 
-  it("caps upcoming assistant bookings per email at 2, but cancelled ones don't count", async () => {
+  it("allows 1 upcoming assistant booking before sign-up, 2 after, and cancelled ones don't count", async () => {
     const guestEmail = email();
     const first = (await book({ email: guestEmail, ...booking(55, "11:00") })).body;
-    await book({ email: guestEmail, ...booking(55, "13:30") });
-    expect((await book({ email: guestEmail, ...booking(55, "17:00") })).status).toBe(400);
+    expect((await book({ email: guestEmail, ...booking(55, "13:30") })).body).toEqual({ message: "This email already has a booking made with the assistant. To book a different time, sign up with this email in the app, cancel that booking there, then ask me again." });
     await prisma.reservation.update({ where: { id: first.id }, data: { status: "CANCELLED" } });
+    expect((await book({ email: guestEmail, ...booking(55, "13:30") })).status).toBe(201);
+
+    await request(app).post("/api/auth/register").send({ email: guestEmail, password: "Password123", name: "Claimed" });
     expect((await book({ email: guestEmail, ...booking(55, "17:00") })).status).toBe(201);
+    expect((await book({ email: guestEmail, ...booking(55, "19:30") })).body).toEqual({ message: "This email already has 2 upcoming assistant bookings. Sign in to manage them." });
   });
 
   it("enforces the per-email cap even for simultaneous confirmations", async () => {
     const guestEmail = email();
     const attempts = await Promise.all(["11:00", "13:30", "17:00"].map((t) => book({ email: guestEmail, ...booking(59, t) })));
-    expect(attempts.map((r) => r.status).sort()).toEqual([201, 201, 400]);
+    expect(attempts.map((r) => r.status).sort()).toEqual([201, 400, 400]);
     const guest = await prisma.user.findUniqueOrThrow({ where: { email: guestEmail } });
-    expect(await prisma.reservation.count({ where: { userId: guest.id, source: "AGENT" } })).toBe(2);
+    expect(await prisma.reservation.count({ where: { userId: guest.id, source: "AGENT" } })).toBe(1);
   });
 
   it("rejects an invalid phone or idempotency key", async () => {
@@ -87,14 +90,16 @@ describe("agent guest lookup", () => {
 
   it("answers only exists + upcoming count, and audits every lookup", async () => {
     const guestEmail = email();
-    expect((await lookup({ email: guestEmail })).body).toEqual({ exists: false, upcomingAssistantBookings: 0 });
+    expect((await lookup({ email: guestEmail })).body).toEqual({ exists: false, upcomingAssistantBookings: 0, assistantBookingLimit: 1 });
     await book({ email: guestEmail, ...booking(57) });
-    expect((await lookup({ email: guestEmail })).body).toEqual({ exists: true, upcomingAssistantBookings: 1 });
+    expect((await lookup({ email: guestEmail })).body).toEqual({ exists: true, upcomingAssistantBookings: 1, assistantBookingLimit: 1 });
+    const signedUp = await registerGuest();
+    expect((await lookup({ email: signedUp.email })).body).toEqual({ exists: true, upcomingAssistantBookings: 0, assistantBookingLimit: 2 });
     expect(await prisma.auditLog.count({ where: { action: "VIEW_GUEST", metadata: { path: ["found"], equals: true } } })).toBeGreaterThan(0);
   });
 
   it("treats staff accounts as not found", async () => {
-    expect((await lookup({ email: ADMIN.email })).body).toEqual({ exists: false, upcomingAssistantBookings: 0 });
+    expect((await lookup({ email: ADMIN.email })).body).toEqual({ exists: false, upcomingAssistantBookings: 0, assistantBookingLimit: 1 });
   });
 
   it("refuses anything but a single exact email", async () => {

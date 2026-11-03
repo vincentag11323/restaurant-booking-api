@@ -33,14 +33,22 @@ test.describe("assistant books on a guest's behalf", () => {
     expect((await second.json()).id).toBe((await first.json()).id);
   });
 
-  test("an email can hold at most 2 upcoming assistant bookings", async ({ request }) => {
+  test("an email that hasn't signed up can hold only 1 upcoming assistant booking", async ({ request }) => {
     const agent = await loginAgent(request);
     const email = guestEmail();
+    expect((await request.post("/api/agent/reservations", { headers: agent.headers, data: { email, ...slot(24, "11:00") } })).status()).toBe(201);
+    const second = await request.post("/api/agent/reservations", { headers: agent.headers, data: { email, ...slot(24, "13:30") } });
+    expect(second.status()).toBe(400);
+    expect(await second.json()).toEqual({ message: "This email already has a booking made with the assistant. To book a different time, sign up with this email in the app, cancel that booking there, then ask me again." });
+  });
+
+  test("a signed-up guest can hold 2 upcoming assistant bookings", async ({ request }) => {
+    const agent = await loginAgent(request);
+    const { email } = await registerGuest(request);
     for (const startTime of ["11:00", "13:30"]) {
-      expect((await request.post("/api/agent/reservations", { headers: agent.headers, data: { email, ...slot(24, startTime) } })).status()).toBe(201);
+      expect((await request.post("/api/agent/reservations", { headers: agent.headers, data: { email, ...slot(32, startTime) } })).status()).toBe(201);
     }
-    const third = await request.post("/api/agent/reservations", { headers: agent.headers, data: { email, ...slot(24, "17:00") } });
-    expect(third.status()).toBe(400);
+    const third = await request.post("/api/agent/reservations", { headers: agent.headers, data: { email, ...slot(32, "17:00") } });
     expect(await third.json()).toEqual({ message: "This email already has 2 upcoming assistant bookings. Sign in to manage them." });
   });
 
@@ -56,11 +64,11 @@ test.describe("assistant looks up one guest at a time", () => {
     const agent = await loginAgent(request);
     const email = guestEmail();
     const before = await request.post("/api/agent/guests/lookup", { headers: agent.headers, data: { email } });
-    expect(await before.json()).toEqual({ exists: false, upcomingAssistantBookings: 0 });
+    expect(await before.json()).toEqual({ exists: false, upcomingAssistantBookings: 0, assistantBookingLimit: 1 });
 
     await request.post("/api/agent/reservations", { headers: agent.headers, data: { email, ...slot(26) } });
     const after = await request.post("/api/agent/guests/lookup", { headers: agent.headers, data: { email: email.toUpperCase() } });
-    expect(await after.json()).toEqual({ exists: true, upcomingAssistantBookings: 1 });
+    expect(await after.json()).toEqual({ exists: true, upcomingAssistantBookings: 1, assistantBookingLimit: 1 });
   });
 
   test("refuses partial or non-email input", async ({ request }) => {

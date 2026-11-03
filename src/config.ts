@@ -14,5 +14,10 @@ export const config = {
   jwtRefreshSecret: required("JWT_REFRESH_SECRET"),
   utcOffset: process.env.RESTAURANT_UTC_OFFSET ?? "+07:00",
   authRateLimit: Number(process.env.AUTH_RATE_LIMIT ?? 20),
+  errorLog: {
+    path: process.env.ERROR_LOG_PATH ?? "logs/errors.log",
+    maxBytes: Number(process.env.ERROR_LOG_MAX_BYTES ?? 5 * 1024 * 1024),
+    console: process.env.ERROR_LOG_CONSOLE !== "false",
+  },
   isProduction: process.env.NODE_ENV === "production",
 };

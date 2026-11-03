@@ -33,8 +33,18 @@ describe("config", () => {
       RESTAURANT_UTC_OFFSET: undefined,
       AUTH_RATE_LIMIT: undefined,
       NODE_ENV: undefined,
+      ERROR_LOG_PATH: undefined,
+      ERROR_LOG_MAX_BYTES: undefined,
+      ERROR_LOG_CONSOLE: undefined,
     });
-    expect(config).toMatchObject({ port: 4000, corsOrigin: "http://localhost:5173", utcOffset: "+07:00", authRateLimit: 20, isProduction: false });
+    expect(config).toMatchObject({
+      port: 4000,
+      corsOrigin: "http://localhost:5173",
+      utcOffset: "+07:00",
+      authRateLimit: 20,
+      isProduction: false,
+      errorLog: { path: "logs/errors.log", maxBytes: 5 * 1024 * 1024, console: true },
+    });
   });
 });
 
