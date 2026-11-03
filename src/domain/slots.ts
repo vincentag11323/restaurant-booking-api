@@ -5,10 +5,6 @@ export type SlotStartTime = (typeof SLOT_START_TIMES)[number];
 
 export const MAX_DAYS_AHEAD = 60;
 
-export function isSlotStartTime(value: string): value is SlotStartTime {
-  return (SLOT_START_TIMES as readonly string[]).includes(value);
-}
-
 /** Converts a local date ("2026-12-24") + slot start ("19:30") into a UTC slot window. */
 export function computeSlot(date: string, startTime: SlotStartTime, utcOffset: string) {
   const slotStart = new Date(`${date}T${startTime}:00${utcOffset}`);
