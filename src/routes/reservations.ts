@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { MAX_PARTY_SIZE } from "../domain/allocation.js";
-import { availability, reservationSelect, resolveSlot, withAllocation } from "../domain/reservations.js";
+import { availability, generateReservationCode, reservationSelect, resolveSlot, withAllocation } from "../domain/reservations.js";
 import { SLOT_START_TIMES } from "../domain/slots.js";
 import { audit } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
@@ -11,6 +11,7 @@ import { branchEnum, dateString, parse, sectorEnum } from "../lib/validate.js";
 import { currentUser, requireAuth } from "../middleware/auth.js";
 
 export const reservationsRouter = Router();
+export const availabilityRouter = Router();
 
 const slotTime = z.enum(SLOT_START_TIMES, { error: `startTime must be one of ${SLOT_START_TIMES.join(", ")}` });
 const partySizeMessage = `Party size must be between 1 and ${MAX_PARTY_SIZE}`;
@@ -33,7 +34,7 @@ const rescheduleSchema = z.object({
 
 const availabilityQuery = z.object({ branch: branchEnum, sector: sectorEnum, date: dateString });
 
-reservationsRouter.get("/availability", async (req, res) => {
+availabilityRouter.get("/", async (req, res) => {
   const { branch, sector, date } = parse(availabilityQuery, req.query);
   res.json(await availability(branch, sector, date, SLOT_START_TIMES));
 });
@@ -74,6 +75,7 @@ reservationsRouter.post("/", async (req, res) => {
     const tableIds = await allocate(tx, input.branch, input.sector, slotStart, input.partySize);
     return tx.reservation.create({
       data: {
+        code: generateReservationCode(),
         userId: user.id,
         branch: input.branch,
         sector: input.sector,

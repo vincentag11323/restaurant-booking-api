@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { Prisma } from "../generated/prisma/client.js";
 import type { Branch, Sector } from "../generated/prisma/enums.js";
 import { config } from "../config.js";
@@ -11,6 +12,7 @@ type Tx = Prisma.TransactionClient;
 /** Fields returned to clients (never userId / allocation internals). */
 export const reservationSelect = {
   id: true,
+  code: true,
   branch: true,
   sector: true,
   slotStart: true,
@@ -23,6 +25,15 @@ export const reservationSelect = {
   updatedAt: true,
   cancelledAt: true,
 } satisfies Prisma.ReservationSelect;
+
+// No 0/O or 1/I, so codes survive being read aloud at the host stand.
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/** "RSV-7K3Q9X": 32^6 ≈ 1 billion codes; a collision fails the unique index and surfaces as a 400 retry. */
+export function generateReservationCode(): string {
+  const chars = Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]);
+  return `RSV-${chars.join("")}`;
+}
 
 export function resolveSlot(date: string, startTime: SlotStartTime) {
   const slot = computeSlot(date, startTime, config.utcOffset);

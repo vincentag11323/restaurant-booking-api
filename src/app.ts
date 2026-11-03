@@ -8,7 +8,7 @@ import { errorHandler, notFoundRoute } from "./middleware/error.js";
 import { authRouter } from "./routes/auth.js";
 import { menuRouter } from "./routes/menu.js";
 import { profileRouter } from "./routes/profile.js";
-import { reservationsRouter } from "./routes/reservations.js";
+import { availabilityRouter, reservationsRouter } from "./routes/reservations.js";
 
 export function createApp() {
   const app = express();
@@ -26,7 +26,8 @@ export function createApp() {
   app.use("/api/auth", rateLimit({ windowMs: 15 * 60_000, limit: config.authRateLimit }), authRouter);
   app.use("/api/me", profileRouter);
   app.use("/api/menu", menuRouter);
-  app.use("/api", reservationsRouter);
+  app.use("/api/availability", availabilityRouter);
+  app.use("/api/reservations", reservationsRouter);
 
   app.use(notFoundRoute);
   app.use(errorHandler);
