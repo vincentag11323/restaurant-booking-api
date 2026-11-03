@@ -27,6 +27,10 @@ describe("config", () => {
     expect(() => load("../../src/config.js", { SESSION_SECRET: undefined })).toThrow("Missing required env var: SESSION_SECRET");
   });
 
+  it("refuses a SESSION_SECRET shorter than 32 characters", () => {
+    expect(() => load("../../src/config.js", { SESSION_SECRET: "short-secret" })).toThrow("SESSION_SECRET must be at least 32 characters");
+  });
+
   it("falls back to documented defaults", () => {
     const { config } = load<typeof import("../../src/config.js")>("../../src/config.js", {
       PORT: undefined,

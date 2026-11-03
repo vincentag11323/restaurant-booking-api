@@ -137,6 +137,24 @@ describe("agent API key", () => {
     const run = promisify(exec);
     await expect(run("npx tsx prisma/seed.ts", { env: { ...process.env, AGENT_API_KEY: "too-short" } })).rejects.toThrow("AGENT_API_KEY must be at least 32 characters");
   });
+
+  it("the seed warns instead of silently skipping when AGENT_API_KEY is not set", async () => {
+    const run = promisify(exec);
+    const { stderr } = await run("npx tsx prisma/seed.ts", { env: { ...process.env, AGENT_API_KEY: "" } });
+    expect(stderr).toContain("AGENT_API_KEY is not set: the AI assistant's account was not created/updated");
+  });
+
+  it("the seed refuses to overwrite an assistant row that is not role AGENT", async () => {
+    await prisma.user.update({ where: { email: AGENT_EMAIL }, data: { role: "USER" } });
+    try {
+      const run = promisify(exec);
+      await expect(run("npx tsx prisma/seed.ts", { env: process.env })).rejects.toThrow(
+        "assistant@resortos.internal belongs to a non-AGENT account; refusing to put the API key on it",
+      );
+    } finally {
+      await prisma.user.update({ where: { email: AGENT_EMAIL }, data: { role: "AGENT" } });
+    }
+  });
 });
 
 describe("RBAC and guest-account claim", () => {
