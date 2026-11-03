@@ -176,10 +176,10 @@ describe("agent API key", () => {
 });
 
 describe("RBAC and guest-account claim", () => {
-  it("forbids a guest from assistant routes", async () => {
+  it("(S11) a guest's cookie means nothing on assistant routes", async () => {
     const guest = await registerGuest();
     const res = await request(app).post("/api/agents/guests/lookup").set(guest.auth).send({ email: "a@b.co" });
-    expect([res.status, res.body]).toEqual([403, { message: "Forbidden" }]);
+    expect([res.status, res.body]).toEqual([401, { message: "Authentication required" }]);
   });
 
   it("an assistant-created guest account can't log in until sign-up claims it", async () => {

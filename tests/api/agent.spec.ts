@@ -80,9 +80,9 @@ test.describe("assistant looks up one guest at a time", () => {
 });
 
 test.describe("RBAC", () => {
-  test("the assistant gets 403 on every route that isn't its own", async ({ request }) => {
+  test("(S4) the assistant's key means nothing on /api/users and /api/admins: 401 Authentication required", async ({ request }) => {
     const agent = agentAuth();
-    const forbidden = [
+    const refused = [
       request.get("/api/users/reservations", { headers: agent.headers }),
       request.post("/api/users/reservations", { headers: agent.headers, data: slot(27) }),
       request.get("/api/users/me", { headers: agent.headers }),
@@ -92,20 +92,31 @@ test.describe("RBAC", () => {
       request.get("/api/admins/reservations?q=gmail", { headers: agent.headers }),
       request.get("/api/admins/reservations/export", { headers: agent.headers }),
     ];
-    for (const res of await Promise.all(forbidden)) {
-      expect(res.status()).toBe(403);
-      expect(await res.json()).toEqual({ message: "Forbidden" });
+    for (const res of await Promise.all(refused)) {
+      expect(res.status()).toBe(401);
+      expect(await res.json()).toEqual({ message: "Authentication required" });
     }
   });
 
-  test("guests and admins get 403 on assistant routes; no credentials get 401", async ({ request }) => {
+  test("(S11) guest and admin cookies mean nothing on /api/agents: 401 Authentication required, as with no credentials", async ({ request }) => {
     const guest = await registerGuest(request);
     const admin = await loginAdmin(request);
-    for (const headers of [guest.headers, admin.headers]) {
-      expect((await request.post("/api/agents/reservations", { headers, data: { email: guestEmail(), ...slot(28) } })).status()).toBe(403);
-      expect((await request.post("/api/agents/guests/lookup", { headers, data: { email: "a@b.co" } })).status()).toBe(403);
+    for (const headers of [guest.headers, admin.headers, {}]) {
+      for (const res of [
+        await request.post("/api/agents/reservations", { headers, data: { email: guestEmail(), ...slot(28) } }),
+        await request.post("/api/agents/guests/lookup", { headers, data: { email: "a@b.co" } }),
+      ]) {
+        expect(res.status()).toBe(401);
+        expect(await res.json()).toEqual({ message: "Authentication required" });
+      }
     }
-    expect((await request.post("/api/agents/guests/lookup", { data: { email: "a@b.co" } })).status()).toBe(401);
+  });
+
+  test("(S12) anyone, including the assistant, can use /api/public", async ({ request }) => {
+    const agent = agentAuth();
+    for (const path of ["/api/public/health", "/api/public/menus", `/api/public/availabilities?branch=BRANCH_1&sector=MAIN_HALL&date=${daysAhead(2)}`]) {
+      expect([path, (await request.get(path, { headers: agent.headers })).status()]).toEqual([path, 200]);
+    }
   });
 
   test("a wrong X-Agent-Key gets 401", async ({ request }) => {
