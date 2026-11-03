@@ -8,5 +8,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src", "tests", "prisma", "playwright.config.ts", "prisma.config.ts"]
+  "include": ["src", "tests", "prisma", "scripts", "playwright.config.ts", "jest.config.ts", "prisma.config.ts"]
 }

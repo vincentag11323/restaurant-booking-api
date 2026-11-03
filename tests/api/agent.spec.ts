@@ -42,14 +42,14 @@ test.describe("assistant books on a guest's behalf", () => {
     expect(await second.json()).toEqual({ message: "This email already has a booking made with the assistant. To book a different time, sign up with this email in the app, cancel that booking there, then ask me again." });
   });
 
-  test("a signed-up guest can hold 2 upcoming assistant bookings", async ({ request }) => {
+  test("a signed-up guest can hold 3 upcoming assistant bookings", async ({ request }) => {
     const agent = await loginAgent(request);
     const { email } = await registerGuest(request);
-    for (const startTime of ["11:00", "13:30"]) {
+    for (const startTime of ["11:00", "13:30", "17:00"]) {
       expect((await request.post("/api/agent/reservations", { headers: agent.headers, data: { email, ...slot(32, startTime) } })).status()).toBe(201);
     }
-    const third = await request.post("/api/agent/reservations", { headers: agent.headers, data: { email, ...slot(32, "17:00") } });
-    expect(await third.json()).toEqual({ message: "This email already has 2 upcoming assistant bookings. Sign in to manage them." });
+    const fourth = await request.post("/api/agent/reservations", { headers: agent.headers, data: { email, ...slot(32, "19:30") } });
+    expect(await fourth.json()).toEqual({ message: "This email already has 3 upcoming assistant bookings. Sign in to manage them." });
   });
 
   test("the same booking rules and messages apply", async ({ request }) => {

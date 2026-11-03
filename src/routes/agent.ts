@@ -13,9 +13,9 @@ import { createSchema } from "./reservations.js";
 /** Routes for the AI booking assistant (role AGENT). Thin on purpose: booking reuses bookReservation(). */
 export const agentRouter = Router();
 
-/** Owner rule: 1 upcoming assistant booking until the email signs up, then 2 (agent_spec.md §5.4). */
+/** Owner rules: 1 upcoming assistant booking until the email signs up, then 3; more looks like spam (agent_spec.md §5.4). */
 const LIMIT_NOT_SIGNED_UP = 1;
-const LIMIT_SIGNED_UP = 2;
+const LIMIT_SIGNED_UP = 3;
 const NOT_SIGNED_UP_MESSAGE = "This email already has a booking made with the assistant. To book a different time, sign up with this email in the app, cancel that booking there, then ask me again.";
 
 function assistantBookingLimit(guest: { passwordHash: string | null } | null): number {

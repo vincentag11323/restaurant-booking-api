@@ -68,7 +68,8 @@ describe("agent booking", () => {
 
     await request(app).post("/api/auth/register").send({ email: guestEmail, password: "Password123", name: "Claimed" });
     expect((await book({ email: guestEmail, ...booking(55, "17:00") })).status).toBe(201);
-    expect((await book({ email: guestEmail, ...booking(55, "19:30") })).body).toEqual({ message: "This email already has 2 upcoming assistant bookings. Sign in to manage them." });
+    expect((await book({ email: guestEmail, ...booking(55, "19:30") })).status).toBe(201);
+    expect((await book({ email: guestEmail, ...booking(56, "11:00") })).body).toEqual({ message: "This email already has 3 upcoming assistant bookings. Sign in to manage them." });
   });
 
   it("enforces the per-email cap even for simultaneous confirmations", async () => {
@@ -94,7 +95,7 @@ describe("agent guest lookup", () => {
     await book({ email: guestEmail, ...booking(57) });
     expect((await lookup({ email: guestEmail })).body).toEqual({ exists: true, upcomingAssistantBookings: 1, assistantBookingLimit: 1 });
     const signedUp = await registerGuest();
-    expect((await lookup({ email: signedUp.email })).body).toEqual({ exists: true, upcomingAssistantBookings: 0, assistantBookingLimit: 2 });
+    expect((await lookup({ email: signedUp.email })).body).toEqual({ exists: true, upcomingAssistantBookings: 0, assistantBookingLimit: 3 });
     expect(await prisma.auditLog.count({ where: { action: "VIEW_GUEST", metadata: { path: ["found"], equals: true } } })).toBeGreaterThan(0);
   });
 
