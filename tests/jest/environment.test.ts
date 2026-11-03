@@ -37,6 +37,9 @@ describe("config", () => {
       ERROR_LOG_PATH: undefined,
       ERROR_LOG_MAX_BYTES: undefined,
       ERROR_LOG_CONSOLE: undefined,
+      APP_LOG_PATH: undefined,
+      APP_LOG_MAX_BYTES: undefined,
+      APP_LOG_CONSOLE: undefined,
       SESSION_TTL: undefined,
       // Sessions live in the database now; no signing secret is needed.
       SESSION_SECRET: undefined,
@@ -48,6 +51,7 @@ describe("config", () => {
       authRateLimit: 20,
       isProduction: false,
       errorLog: { path: "logs/errors.log", maxBytes: 5 * 1024 * 1024, console: true },
+      appLog: { path: "logs/app.log", maxBytes: 5 * 1024 * 1024, console: true },
       sessionTtlSeconds: 3600,
     });
   });

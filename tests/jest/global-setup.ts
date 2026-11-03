@@ -15,6 +15,8 @@ export const TEST_ENV = {
   AGENT_API_KEY: "jest-agent-key-jest-agent-key-jest-agent-key",
   ERROR_LOG_PATH: `${process.cwd()}/test-results/errors-jest.log`,
   ERROR_LOG_CONSOLE: "false",
+  APP_LOG_PATH: `${process.cwd()}/test-results/app-jest.log`,
+  APP_LOG_CONSOLE: "false",
   RESTAURANT_UTC_OFFSET: "+07:00",
   CORS_ORIGIN: "http://localhost:5173",
 };

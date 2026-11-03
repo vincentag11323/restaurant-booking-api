@@ -26,6 +26,8 @@ export default async function globalSetup() {
     AGENT_API_KEY: "test-agent-key-test-agent-key-test-agent-key",
     ERROR_LOG_PATH: `${process.cwd()}/test-results/errors-e2e.log`,
     ERROR_LOG_CONSOLE: "false",
+    APP_LOG_PATH: `${process.cwd()}/test-results/app-e2e.log`,
+    APP_LOG_CONSOLE: "false",
   });
   await run("npx prisma migrate deploy", { env: process.env });
   await run("npx tsx prisma/seed.ts", { env: process.env });
