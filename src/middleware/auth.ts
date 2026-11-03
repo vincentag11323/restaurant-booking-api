@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { prisma } from "../lib/db.js";
 import { HttpError } from "../lib/errors.js";
 import { type Permission, can } from "../lib/permissions.js";
-import { type AuthUser, SESSION_COOKIE, hashApiKey, verifySessionToken } from "../lib/tokens.js";
+import { type AuthUser, SESSION_COOKIE, sha256Hex, verifySessionToken } from "../lib/tokens.js";
 
 declare global {
   namespace Express {
@@ -16,9 +16,9 @@ declare global {
 async function authenticate(req: Request): Promise<AuthUser> {
   const apiKey = req.get("x-agent-key");
   if (apiKey !== undefined) {
-    const agent = await prisma.user.findFirst({ where: { apiKeyHash: hashApiKey(apiKey), role: "AGENT" }, select: { id: true, role: true } });
-    if (!agent) throw new HttpError(401, "Invalid API key");
-    return agent;
+    const key = await prisma.apiKey.findUnique({ where: { keyHash: sha256Hex(apiKey) }, select: { user: { select: { id: true, role: true } } } });
+    if (key?.user.role !== "AGENT") throw new HttpError(401, "Invalid API key");
+    return key.user;
   }
   const token: unknown = req.cookies?.[SESSION_COOKIE];
   if (typeof token !== "string") throw new HttpError(401, "Authentication required");

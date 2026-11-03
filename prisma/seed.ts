@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/db.js";
-import { hashApiKey } from "../src/lib/tokens.js";
+import { sha256Hex } from "../src/lib/tokens.js";
 import type { Branch, MenuType, Sector } from "../src/generated/prisma/enums.js";
 import { MAIN_HALL_TABLE_SEATS, VIP_ROOM_SEATS } from "../src/domain/allocation.js";
 
@@ -62,17 +62,22 @@ async function main() {
     });
   }
 
-  // The AI booking assistant's account (role AGENT, agent_spec.md §5.5): no password, only the SHA-256 of AGENT_API_KEY.
+  // The AI booking assistant's account (role AGENT, agent_spec.md §5.5): no password; its one ApiKey row holds only the SHA-256 of AGENT_API_KEY.
   if (agentApiKey) {
     const existing = await prisma.user.findUnique({ where: { email: AGENT_EMAIL } });
     if (existing && existing.role !== "AGENT") {
       throw new Error("assistant@resortos.internal belongs to a non-AGENT account; refusing to put the API key on it");
     }
-    const apiKeyHash = hashApiKey(agentApiKey);
-    await prisma.user.upsert({
+    const agent = await prisma.user.upsert({
       where: { email: AGENT_EMAIL },
-      update: { apiKeyHash, passwordHash: null },
-      create: { email: AGENT_EMAIL, name: "AI booking assistant", role: "AGENT", passwordHash: null, apiKeyHash },
+      update: { passwordHash: null },
+      create: { email: AGENT_EMAIL, name: "AI booking assistant", role: "AGENT", passwordHash: null },
+    });
+    const keyHash = sha256Hex(agentApiKey);
+    await prisma.apiKey.upsert({
+      where: { userId: agent.id },
+      update: { keyHash },
+      create: { name: "AI booking assistant", keyHash, userId: agent.id },
     });
   } else {
     console.warn("AGENT_API_KEY is not set: the AI assistant's account was not created/updated");

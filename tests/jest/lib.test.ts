@@ -4,7 +4,7 @@ import { z } from "zod";
 import { HttpError, notFound } from "../../src/lib/errors.js";
 import { notify } from "../../src/lib/notify.js";
 import jwt from "jsonwebtoken";
-import { hashApiKey, signSessionToken, verifySessionToken } from "../../src/lib/tokens.js";
+import { sha256Hex, signSessionToken, verifySessionToken } from "../../src/lib/tokens.js";
 import { parse } from "../../src/lib/validate.js";
 import { currentUser } from "../../src/middleware/auth.js";
 import { errorHandler } from "../../src/middleware/error.js";
@@ -59,7 +59,7 @@ describe("auth helpers", () => {
   });
 
   it("hashes the agent API key as SHA-256 hex", () => {
-    expect(hashApiKey("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    expect(sha256Hex("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
   });
 
   it("currentUser throws 401 when no user is attached", () => {

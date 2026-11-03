@@ -21,7 +21,7 @@ export function verifySessionToken(token: string): AuthUser {
   return { id: payload.sub as string, role: payload.role as Role };
 }
 
-/** The agent API key is stored only as this SHA-256 hex digest (User.apiKeyHash). */
-export function hashApiKey(key: string): string {
+/** Secrets (API keys) are stored only as this SHA-256 hex digest (ApiKey.keyHash). */
+export function sha256Hex(key: string): string {
   return createHash("sha256").update(key).digest("hex");
 }

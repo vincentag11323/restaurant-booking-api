@@ -51,11 +51,38 @@ model User {
   phone               String?
   allergies           String[]
   role                Role          @default(USER)
-  /// SHA-256 hex of AGENT_API_KEY. Set only on the AGENT account (the assistant authenticates with X-Agent-Key).
-  apiKeyHash          String?       @unique
   createdAt           DateTime      @default(now()) @db.Timestamptz
   reservations        Reservation[]
   createdReservations Reservation[] @relation("CreatedBy")
+  sessions            Session[]
+  apiKey              ApiKey?
+}
+
+/// One row per signed-in browser. The cookie holds a random token; only its SHA-256 is stored.
+/// Sign-out deletes the row; after expiresAt the row no longer counts.
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  /// createdAt + SESSION_TTL, never extended.
+  expiresAt DateTime @db.Timestamptz
+
+  @@index([userId])
+}
+
+/// Keys for non-browser callers. For now one key, owned by the AGENT account (X-Agent-Key).
+model ApiKey {
+  id        String   @id @default(cuid())
+  /// Who the key is for, e.g. "AI booking assistant".
+  name      String
+  /// SHA-256 hex of the key; the key itself is never stored.
+  keyHash   String   @unique
+  /// Unique for now: one key per account.
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz
 }
 
 /// A two-seat table (MAIN_HALL) or a private room (VIP_WING). Seeded, never edited by the app.
