@@ -25,8 +25,8 @@ const onBehalfSchema = createSchema.extend({
 
 const idempotencyKeySchema = z.string().min(8).max(200).optional();
 
-function upcomingAssistantBookings(userId: string) {
-  return prisma.reservation.count({
+function upcomingAssistantBookings(userId: string, db: Pick<typeof prisma, "reservation"> = prisma) {
+  return db.reservation.count({
     where: { userId, source: "AGENT", status: "CONFIRMED", slotStart: { gt: new Date() } },
   });
 }
@@ -53,11 +53,15 @@ agentRouter.post("/reservations", requirePermission("reservation:create_on_behal
     create: { email, phone, name: email.split("@")[0], passwordHash: null },
   });
   if (guest.role !== "USER") throw badRequest("This email can't be booked through the assistant");
-  if ((await upcomingAssistantBookings(guest.id)) >= MAX_UPCOMING_ASSISTANT_BOOKINGS) {
-    throw badRequest(`This email already has ${MAX_UPCOMING_ASSISTANT_BOOKINGS} upcoming assistant bookings. Sign in to manage them.`);
-  }
 
-  const reservation = await bookReservation(booking, { userId: guest.id, createdById: agent.id, source: "AGENT", idempotencyKey });
+  // The cap is checked inside the booking transaction while holding the guest's row lock, so simultaneous
+  // confirmations for one email queue up instead of all reading the same count.
+  const reservation = await bookReservation(booking, { userId: guest.id, createdById: agent.id, source: "AGENT", idempotencyKey }, async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${guest.id} FOR UPDATE`;
+    if ((await upcomingAssistantBookings(guest.id, tx)) >= MAX_UPCOMING_ASSISTANT_BOOKINGS) {
+      throw badRequest(`This email already has ${MAX_UPCOMING_ASSISTANT_BOOKINGS} upcoming assistant bookings. Sign in to manage them.`);
+    }
+  });
   await audit(req, "CREATE_RESERVATION", { resourceId: reservation.id, metadata: { source: "AGENT", onBehalfOf: guest.id, clientIp } });
   await notify(email, "Booking confirmed", `Reservation ${reservation.code} at ${reservation.slotStart.toISOString()}`);
   res.status(201).json(reservation);

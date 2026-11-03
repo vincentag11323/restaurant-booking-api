@@ -91,9 +91,12 @@ export interface BookingInput {
 export function bookReservation(
   input: BookingInput,
   who: { userId: string; createdById: string; source: "APP" | "AGENT"; idempotencyKey?: string },
+  /** Runs first inside the booking transaction, e.g. a per-guest limit that must hold under concurrent requests. */
+  guard?: (tx: Tx) => Promise<void>,
 ) {
   const { slotStart, slotEnd } = resolveSlot(input.date, input.startTime);
   return withAllocation(async (tx, allocate) => {
+    if (guard) await guard(tx);
     const tableIds = await allocate(tx, input.branch, input.sector, slotStart, input.partySize);
     return tx.reservation.create({
       data: {

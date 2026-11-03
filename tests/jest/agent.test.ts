@@ -68,6 +68,14 @@ describe("agent booking", () => {
     expect((await book({ email: guestEmail, ...booking(55, "17:00") })).status).toBe(201);
   });
 
+  it("enforces the per-email cap even for simultaneous confirmations", async () => {
+    const guestEmail = email();
+    const attempts = await Promise.all(["11:00", "13:30", "17:00"].map((t) => book({ email: guestEmail, ...booking(59, t) })));
+    expect(attempts.map((r) => r.status).sort()).toEqual([201, 201, 400]);
+    const guest = await prisma.user.findUniqueOrThrow({ where: { email: guestEmail } });
+    expect(await prisma.reservation.count({ where: { userId: guest.id, source: "AGENT" } })).toBe(2);
+  });
+
   it("rejects an invalid phone or idempotency key", async () => {
     expect((await book({ email: email(), phone: "call me", ...booking(56) })).body).toEqual({ message: "phone: Invalid phone number" });
     expect((await book({ email: email(), ...booking(56) }, { "Idempotency-Key": "short" })).status).toBe(400);
