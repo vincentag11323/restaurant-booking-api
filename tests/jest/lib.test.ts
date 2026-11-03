@@ -48,6 +48,11 @@ describe("auth helpers", () => {
     expect(verifyRefreshToken(signRefreshToken("u1"))).toBe("u1");
   });
 
+  it("issues access tokens with the configured lifetime", () => {
+    const { exp, iat } = JSON.parse(Buffer.from(signAccessToken({ id: "u1", role: "USER" }).split(".")[1], "base64url").toString());
+    expect(exp - iat).toBe(15 * 60);
+  });
+
   it("refuses a refresh token used as an access token", () => {
     expect(() => verifyAccessToken(signRefreshToken("u1"))).toThrow();
   });

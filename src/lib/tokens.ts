@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 import { config } from "../config.js";
 import type { Role } from "../generated/prisma/enums.js";
 
-export const ACCESS_TOKEN_TTL = "15m";
 export const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60_000;
 
 export interface AuthUser {
@@ -11,7 +10,7 @@ export interface AuthUser {
 }
 
 export function signAccessToken(user: AuthUser): string {
-  return jwt.sign({ role: user.role }, config.jwtAccessSecret, { subject: user.id, expiresIn: ACCESS_TOKEN_TTL });
+  return jwt.sign({ role: user.role }, config.jwtAccessSecret, { subject: user.id, expiresIn: config.accessTokenTtl });
 }
 
 export function signRefreshToken(userId: string): string {

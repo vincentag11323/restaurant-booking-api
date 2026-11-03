@@ -14,6 +14,8 @@ export const config = {
   jwtRefreshSecret: required("JWT_REFRESH_SECRET"),
   utcOffset: process.env.RESTAURANT_UTC_OFFSET ?? "+07:00",
   authRateLimit: Number(process.env.AUTH_RATE_LIMIT ?? 20),
+  // Access token lifetime; the e2e run shortens it to test real expiry (e2e_spec.md §6). Default 15 minutes.
+  accessTokenTtl: (process.env.ACCESS_TOKEN_TTL ?? "15m") as `${number}${"s" | "m" | "h"}`,
   errorLog: {
     path: process.env.ERROR_LOG_PATH ?? "logs/errors.log",
     maxBytes: Number(process.env.ERROR_LOG_MAX_BYTES ?? 5 * 1024 * 1024),

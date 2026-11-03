@@ -15,7 +15,7 @@
     "test:e2e": "playwright test",
     "test:jest": "jest --coverage",
     "db-test": "tsx scripts/db-test.ts",
-    "start:test": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres?sslmode=disable PORT=4400 CORS_ORIGIN=http://localhost:5190 AUTH_RATE_LIMIT=100000 ERROR_LOG_PATH=logs/errors-test.log tsx src/index.ts"
+    "start:test": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres?sslmode=disable PORT=4400 CORS_ORIGIN=http://localhost:5190 AUTH_RATE_LIMIT=100000 ERROR_LOG_PATH=logs/errors-test.log ACCESS_TOKEN_TTL=8s tsx src/index.ts"
   },
   "license": "UNLICENSED",
   "type": "module",

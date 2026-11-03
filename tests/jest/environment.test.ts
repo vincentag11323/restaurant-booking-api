@@ -36,6 +36,7 @@ describe("config", () => {
       ERROR_LOG_PATH: undefined,
       ERROR_LOG_MAX_BYTES: undefined,
       ERROR_LOG_CONSOLE: undefined,
+      ACCESS_TOKEN_TTL: undefined,
     });
     expect(config).toMatchObject({
       port: 4000,
@@ -44,6 +45,7 @@ describe("config", () => {
       authRateLimit: 20,
       isProduction: false,
       errorLog: { path: "logs/errors.log", maxBytes: 5 * 1024 * 1024, console: true },
+      accessTokenTtl: "15m",
     });
   });
 });
