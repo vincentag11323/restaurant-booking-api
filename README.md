@@ -22,11 +22,16 @@ npm run dev            # http://localhost:4000/api/health
 ## Test
 
 ```bash
-npm test               # unit + API suites (Playwright)
+npm test               # Playwright (unit + API) then Jest with coverage
+npm run test:e2e       # Playwright only: tests/unit, tests/api
+npm run test:jest      # Jest only: tests/jest, fails below 100% coverage
 npm run typecheck
 ```
 
-`npm test` needs no database. It boots an in-memory PGlite, applies the migrations, seeds, and starts the API on port 4100.
+Neither suite needs a database. Each boots its own in-memory PGlite (Playwright on port 5499, Jest on 5498), applies the migrations and seeds.
+
+* **Playwright** (`tests/unit`, `tests/api`): black-box checks of the HTTP contract in `api_spec.md`.
+* **Jest** (`tests/jest`): supertest against `createApp()` plus direct unit tests, with a 100% statement/branch/function/line threshold over `src/` (excluding `src/generated`). It uses `@swc/jest` because `ts-jest` doesn't support TypeScript 7. The HTML report is in `coverage/lcov-report/index.html`.
 
 ## Layout
 
@@ -37,6 +42,7 @@ npm run typecheck
 | `src/lib/` | DB client, JWT, Zod helpers, audit log, notification stub |
 | `prisma/` | Schema, migrations (the init migration adds the append-only `AuditLog` trigger), seed |
 | `tests/unit/`, `tests/api/` | Playwright suites |
+| `tests/jest/` | Jest suites (coverage) |
 
 ## Production notes
 
