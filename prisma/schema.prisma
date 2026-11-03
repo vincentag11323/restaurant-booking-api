@@ -51,6 +51,8 @@ model User {
   phone               String?
   allergies           String[]
   role                Role          @default(USER)
+  /// SHA-256 hex of AGENT_API_KEY. Set only on the AGENT account (the assistant authenticates with X-Agent-Key).
+  apiKeyHash          String?       @unique
   createdAt           DateTime      @default(now()) @db.Timestamptz
   reservations        Reservation[]
   createdReservations Reservation[] @relation("CreatedBy")
