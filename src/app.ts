@@ -4,6 +4,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { config } from "./config.js";
+import { adminRouter } from "./routes/admin.js";
 import { errorHandler, notFoundRoute } from "./middleware/error.js";
 import { authRouter } from "./routes/auth.js";
 import { menuRouter } from "./routes/menu.js";
@@ -26,6 +27,7 @@ export function createApp() {
   app.use("/api/auth", rateLimit({ windowMs: 15 * 60_000, limit: config.authRateLimit }), authRouter);
   app.use("/api/me", profileRouter);
   app.use("/api/menu", menuRouter);
+  app.use("/api/admin", adminRouter);
   app.use("/api/availability", availabilityRouter);
   app.use("/api/reservations", reservationsRouter);
 
