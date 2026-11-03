@@ -38,16 +38,14 @@ export async function securityAlert(req: Request, reason: string, metadata: Reco
 const FAILED_LOGIN_THRESHOLD = 10;
 const FAILED_LOGIN_WINDOW_MS = 5 * 60_000;
 
-/** Raises an alert exactly when an IP hits the failed-login threshold within the window. */
+/** Raises one alert per window once an IP reaches the failed-login threshold. */
 export async function checkFailedLogins(req: Request) {
-  const count = await prisma.auditLog.count({
-    where: {
-      action: "LOGIN_FAILED",
-      ipAddress: req.ip,
-      timestamp: { gte: new Date(Date.now() - FAILED_LOGIN_WINDOW_MS) },
-    },
-  });
-  if (count === FAILED_LOGIN_THRESHOLD) {
+  const since = new Date(Date.now() - FAILED_LOGIN_WINDOW_MS);
+  const [count, alreadyAlerted] = await Promise.all([
+    prisma.auditLog.count({ where: { action: "LOGIN_FAILED", ipAddress: req.ip, timestamp: { gte: since } } }),
+    prisma.auditLog.count({ where: { action: "SECURITY_ALERT", ipAddress: req.ip, timestamp: { gte: since } } }),
+  ]);
+  if (count >= FAILED_LOGIN_THRESHOLD && alreadyAlerted === 0) {
     await securityAlert(req, "Repeated failed logins from one IP", { ip: req.ip, count });
   }
 }

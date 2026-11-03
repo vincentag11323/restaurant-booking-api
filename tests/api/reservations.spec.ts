@@ -118,6 +118,27 @@ test.describe("booking validation", () => {
   });
 });
 
+test.describe("concurrent changes to one booking", () => {
+  test("a reschedule racing a cancel never leaves a cancelled booking holding tables", async ({ request }) => {
+    const { headers } = await registerGuest(request);
+    const date = daysAhead(9);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const booking = await (
+        await request.post("/api/reservations", { headers, data: { branch: "BRANCH_2", sector: "VIP_WING", date, startTime: "11:00", partySize: 50 } })
+      ).json();
+      await Promise.all([
+        request.patch(`/api/reservations/${booking.id}`, { headers, data: { date, startTime: "19:30" } }),
+        request.delete(`/api/reservations/${booking.id}`, { headers }),
+      ]);
+      const final = await (await request.get(`/api/reservations/${booking.id}`, { headers })).json();
+      const slots = await (await request.get(`/api/availability?branch=BRANCH_2&sector=VIP_WING&date=${date}`)).json();
+      const held = slots.reduce((sum: number, s: { totalUnits: number; freeUnits: number }) => sum + s.totalUnits - s.freeUnits, 0);
+      expect(final.status).toBe("CANCELLED");
+      expect(held).toBe(0);
+    }
+  });
+});
+
 test.describe("access control", () => {
   test("bookings require a token", async ({ request }) => {
     expect((await request.get("/api/reservations")).status()).toBe(401);

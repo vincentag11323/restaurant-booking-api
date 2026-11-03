@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { MAX_PARTY_SIZE } from "../domain/allocation.js";
-import { availability, generateReservationCode, reservationSelect, resolveSlot, withAllocation } from "../domain/reservations.js";
+import { availability, claimConfirmed, generateReservationCode, reservationSelect, resolveSlot, withAllocation } from "../domain/reservations.js";
 import { SLOT_START_TIMES } from "../domain/slots.js";
 import { audit } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
@@ -106,6 +106,7 @@ reservationsRouter.patch("/:id", async (req, res) => {
   const newPartySize = input.partySize ?? existing.partySize;
 
   const reservation = await withAllocation(async (tx, allocate) => {
+    await claimConfirmed(tx, existing.id);
     await tx.reservationTable.deleteMany({ where: { reservationId: existing.id } });
     const tableIds = await allocate(tx, existing.branch, existing.sector, slotStart, newPartySize);
     return tx.reservation.update({
@@ -132,14 +133,15 @@ reservationsRouter.patch("/:id", async (req, res) => {
 reservationsRouter.delete("/:id", async (req, res) => {
   const existing = await findOwned(currentUser(req).id, req.params.id);
   assertModifiable(existing);
-  const [, reservation] = await prisma.$transaction([
-    prisma.reservationTable.deleteMany({ where: { reservationId: existing.id } }),
-    prisma.reservation.update({
+  const reservation = await prisma.$transaction(async (tx) => {
+    await claimConfirmed(tx, existing.id);
+    await tx.reservationTable.deleteMany({ where: { reservationId: existing.id } });
+    return tx.reservation.update({
       where: { id: existing.id },
       data: { status: "CANCELLED", cancelledAt: new Date() },
       select: reservationSelect,
-    }),
-  ]);
+    });
+  });
   await audit(req, "CANCEL_RESERVATION", { resourceId: reservation.id });
   res.json(reservation);
 });

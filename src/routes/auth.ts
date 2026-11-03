@@ -13,6 +13,8 @@ export const authRouter = Router();
 
 const REFRESH_COOKIE = "refreshToken";
 const BCRYPT_COST = 12;
+// Compared against when the email is unknown, so both failure paths take the same bcrypt time.
+const DUMMY_HASH = bcrypt.hashSync("timing-equaliser", BCRYPT_COST);
 
 const registerSchema = z.object({
   email: z.email().max(254).transform((e) => e.toLowerCase()),
@@ -57,7 +59,8 @@ authRouter.post("/register", async (req, res) => {
 authRouter.post("/login", async (req, res) => {
   const input = parse(loginSchema, req.body);
   const user = await prisma.user.findUnique({ where: { email: input.email } });
-  if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) {
+  const passwordOk = await bcrypt.compare(input.password, user?.passwordHash ?? DUMMY_HASH);
+  if (!user || !passwordOk) {
     await audit(req, "LOGIN_FAILED", { actorId: null, metadata: { email: input.email } });
     await checkFailedLogins(req);
     throw new HttpError(401, "Invalid email or password");

@@ -56,6 +56,15 @@ async function allocateTables(tx: Tx, branch: Branch, sector: Sector, slotStart:
   return picked;
 }
 
+/**
+ * Re-checks "still CONFIRMED" inside the transaction. The conditional UPDATE takes the row lock,
+ * so a concurrent cancel/reschedule of the same booking waits, then sees the new status and fails here.
+ */
+export async function claimConfirmed(tx: Tx, id: string) {
+  const { count } = await tx.reservation.updateMany({ where: { id, status: "CONFIRMED" }, data: { updatedAt: new Date() } });
+  if (count === 0) throw badRequest("Only confirmed reservations can be changed");
+}
+
 /** Runs a booking transaction, mapping a unique-constraint race to a 400 overlap error. */
 export async function withAllocation<T>(fn: (tx: Tx, allocate: typeof allocateTables) => Promise<T>): Promise<T> {
   try {
