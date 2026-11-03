@@ -8,12 +8,6 @@ function required(name: string): string {
 
 const TTL_UNIT_SECONDS = { s: 1, m: 60, h: 3600 } as const;
 
-function sessionSecret(): string {
-  const value = required("SESSION_SECRET");
-  if (value.length < 32) throw new Error("SESSION_SECRET must be at least 32 characters");
-  return value;
-}
-
 /** Parses "<positive int><s|m|h>", e.g. 1h, 30m or 8s. */
 function ttlSeconds(value: string): number {
   const match = /^([1-9]\d*)(s|m|h)$/.exec(value);
@@ -25,7 +19,6 @@ export const config = {
   port: Number(process.env.PORT ?? 4000),
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
   databaseUrl: required("DATABASE_URL"),
-  sessionSecret: sessionSecret(),
   utcOffset: process.env.RESTAURANT_UTC_OFFSET ?? "+07:00",
   authRateLimit: Number(process.env.AUTH_RATE_LIMIT ?? 20),
   // Fixed session lifetime from sign-in, never extended; the e2e run shortens it to test real expiry. Default 1 hour.

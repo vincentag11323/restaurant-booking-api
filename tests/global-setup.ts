@@ -19,7 +19,6 @@ export default async function globalSetup() {
 
   Object.assign(process.env, {
     DATABASE_URL: external ?? `postgresql://postgres:postgres@127.0.0.1:${DB_PORT}/postgres?sslmode=disable`,
-    SESSION_SECRET: "test-session-secret-test-session-secret",
     AUTH_RATE_LIMIT: "10000",
     ADMIN_EMAIL: "admin@resortos.test",
     ADMIN_PASSWORD: "Admin12345!",

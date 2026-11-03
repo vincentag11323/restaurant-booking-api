@@ -1,27 +1,16 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { CookieOptions } from "express";
-import jwt from "jsonwebtoken";
 import { config } from "../config.js";
-import type { Role } from "../generated/prisma/enums.js";
 
 export const SESSION_COOKIE = "session";
 export const sessionCookieOptions: CookieOptions = { httpOnly: true, sameSite: "lax", secure: config.isProduction, path: "/" };
 
-export interface AuthUser {
-  id: string;
-  role: Role;
+/** A random 32-byte session token for the cookie; the Session table keeps only its SHA-256. */
+export function newSessionToken(): string {
+  return randomBytes(32).toString("base64url");
 }
 
-export function signSessionToken(user: AuthUser): string {
-  return jwt.sign({ role: user.role }, config.sessionSecret, { subject: user.id, expiresIn: config.sessionTtlSeconds });
-}
-
-export function verifySessionToken(token: string): AuthUser {
-  const payload = jwt.verify(token, config.sessionSecret, { algorithms: ["HS256"] }) as jwt.JwtPayload;
-  return { id: payload.sub as string, role: payload.role as Role };
-}
-
-/** Secrets (API keys) are stored only as this SHA-256 hex digest (ApiKey.keyHash). */
+/** Secrets (session tokens, API keys) are stored only as this SHA-256 hex digest. */
 export function sha256Hex(key: string): string {
   return createHash("sha256").update(key).digest("hex");
 }

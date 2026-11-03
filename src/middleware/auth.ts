@@ -2,7 +2,13 @@ import type { NextFunction, Request, Response } from "express";
 import { prisma } from "../lib/db.js";
 import { HttpError } from "../lib/errors.js";
 import { type Permission, can } from "../lib/permissions.js";
-import { type AuthUser, SESSION_COOKIE, sha256Hex, verifySessionToken } from "../lib/tokens.js";
+import type { Role } from "../generated/prisma/enums.js";
+import { SESSION_COOKIE, sha256Hex } from "../lib/tokens.js";
+
+export interface AuthUser {
+  id: string;
+  role: Role;
+}
 
 declare global {
   namespace Express {
@@ -22,11 +28,9 @@ async function authenticate(req: Request): Promise<AuthUser> {
   }
   const token: unknown = req.cookies?.[SESSION_COOKIE];
   if (typeof token !== "string") throw new HttpError(401, "Authentication required");
-  try {
-    return verifySessionToken(token);
-  } catch {
-    throw new HttpError(401, "Invalid or expired token");
-  }
+  const session = await prisma.session.findUnique({ where: { tokenHash: sha256Hex(token) }, select: { expiresAt: true, user: { select: { id: true, role: true } } } });
+  if (!session || session.expiresAt <= new Date()) throw new HttpError(401, "Invalid or expired token");
+  return session.user;
 }
 
 /** Authenticates the caller, then checks the role grants the permission (401 without valid credentials, 403 without the permission). */

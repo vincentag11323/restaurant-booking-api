@@ -19,8 +19,6 @@ const env = {
   ADMIN_EMAIL: "admin@resortos.test",
   ADMIN_PASSWORD: "Admin12345!",
   AGENT_API_KEY: "e2e-only-agent-key-e2e-only-agent-key-0001",
-  // Same value as package.json's start:test; config.ts requires it, and the local .env may not have one.
-  SESSION_SECRET: "e2e-only-session-secret-0001-0001",
 };
 await run("npx prisma migrate deploy", { env });
 await run("npx tsx prisma/seed.ts", { env });
