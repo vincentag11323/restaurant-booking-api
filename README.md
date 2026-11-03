@@ -42,8 +42,8 @@ Neither suite needs a database. Each boots its own in-memory PGlite (Playwright 
 | Path | What lives there |
 |---|---|
 | `src/domain/` | Booking rules: fixed slots (`slots.ts`), table allocation (`allocation.ts`), reservation transactions (`reservations.ts`) |
-| `src/routes/` | One router per resource: `auth`, `profile`, `reservations` (+ availability), `menu`, `admin` |
-| `src/lib/` | DB client, JWT, Zod helpers, audit log, notification stub |
+| `src/routes/` | One router per resource: `auth`, `profile`, `reservations` (+ availability), `menu`, `admin`, `agent` (the assistant's two routes) |
+| `src/lib/` | DB client, JWT, Zod helpers, permissions (RBAC), audit log, failure log, rate limits, notification stub |
 | `prisma/` | Schema, migrations (the init migration adds the append-only `AuditLog` trigger), seed |
 | `tests/unit/`, `tests/api/` | Playwright suites |
 | `tests/jest/` | Jest suites (coverage) |
@@ -53,3 +53,9 @@ Neither suite needs a database. Each boots its own in-memory PGlite (Playwright 
 * Set `NODE_ENV=production`, long random `JWT_*` secrets, `CORS_ORIGIN` to the web app's URL, and serve over HTTPS (the refresh cookie is `Secure` in production).
 * `npm run build && npm start`. Apply migrations with `npm run db:migrate`.
 * Give the app's database role only `INSERT, SELECT` on `"AuditLog"`.
+
+## Failure log
+Every 4xx/5xx response is written as one JSON line to `logs/errors.log` (`ERROR_LOG_PATH`) and printed with `console.error`. No bodies, passwords or query strings. The file rotates at 5 MB (`ERROR_LOG_MAX_BYTES`) and keeps 3 old copies.
+
+## Tokens
+Access token 15 minutes (`ACCESS_TOKEN_TTL`), kept in memory by the app. Refresh token 7 days in an HttpOnly cookie on `/api/auth`, rotated on each refresh.
