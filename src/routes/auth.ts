@@ -1,10 +1,11 @@
 import bcrypt from "bcryptjs";
-import { type Response, Router } from "express";
+import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { config } from "../config.js";
 import { audit, checkFailedLogins } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { HttpError, badRequest } from "../lib/errors.js";
+import { logChange } from "../lib/logs.js";
 import { SESSION_COOKIE, newSessionToken, sessionCookieOptions, sha256Hex } from "../lib/tokens.js";
 import { parse } from "../lib/validate.js";
 import { publicUser } from "./profile.js";
@@ -31,7 +32,7 @@ const loginSchema = z.object({
  * Starts a session valid for SESSION_TTL from now, never extended: stores only the token's SHA-256 and
  * sets the cookie. Clears that user's expired rows on the way, so no cleanup job is needed.
  */
-async function startSession(res: Response, userId: string) {
+async function startSession(req: Request, res: Response, userId: string, status: number) {
   const now = new Date();
   const { count: expiredDeleted } = await prisma.session.deleteMany({ where: { userId, expiresAt: { lte: now } } });
   const token = newSessionToken();
@@ -40,7 +41,8 @@ async function startSession(res: Response, userId: string) {
     select: { id: true },
   });
   res.cookie(SESSION_COOKIE, token, { ...sessionCookieOptions, maxAge: config.sessionTtlSeconds * 1000 });
-  return { sessionId: session.id, expiredDeleted };
+  if (expiredDeleted > 0) logChange(req, { status, action: "SESSIONS_EXPIRED_DELETED", count: expiredDeleted, userId });
+  logChange(req, { status, action: "SESSION_CREATED", resourceId: session.id, userId });
 }
 
 authRouter.post("/register", async (req, res) => {
@@ -55,7 +57,8 @@ authRouter.post("/register", async (req, res) => {
     ? await prisma.user.update({ where: { id: existing.id }, data })
     : await prisma.user.create({ data: { ...data, email: input.email } });
   await audit(req, "REGISTER", { actorId: user.id, resourceId: user.id, metadata: { claimedGuestAccount: claimable } });
-  await startSession(res, user.id);
+  logChange(req, { status: 201, action: claimable ? "USER_CLAIMED" : "USER_CREATED", resourceId: user.id, userId: user.id });
+  await startSession(req, res, user.id, 201);
   res.status(201).json({ user: publicUser(user) });
 });
 
@@ -70,7 +73,7 @@ authRouter.post("/login", async (req, res) => {
     throw new HttpError(401, "Invalid email or password");
   }
   await audit(req, "LOGIN_SUCCESS", { actorId: user.id });
-  await startSession(res, user.id);
+  await startSession(req, res, user.id, 200);
   res.json({ user: publicUser(user) });
 });
 
@@ -79,7 +82,10 @@ authRouter.post("/logout", async (req, res) => {
   const token: unknown = req.cookies?.[SESSION_COOKIE];
   if (typeof token === "string") {
     const session = await prisma.session.findUnique({ where: { tokenHash: sha256Hex(token) }, select: { id: true, userId: true } });
-    if (session) await prisma.session.deleteMany({ where: { id: session.id } });
+    if (session) {
+      await prisma.session.deleteMany({ where: { id: session.id } });
+      logChange(req, { status: 200, action: "SESSION_DELETED", resourceId: session.id, userId: session.userId });
+    }
   }
   res.clearCookie(SESSION_COOKIE, sessionCookieOptions);
   res.json({ message: "Logged out" });

@@ -50,7 +50,8 @@ describe("(S9) error log", () => {
     await request(app).get("/api/nope?email=secret@test.dev");
     await request(app).post("/api/auth/login").set("Content-Type", "application/json").send("{bad");
     await request(app).get("/api/users/me");
-    const added = lines(path).slice(before);
+    // Parse only the new lines: the shared file may hold lines from earlier runs.
+    const added = rawLines(path).slice(before).map(parseLine);
     expect(added.map(({ tag, record }) => [tag, record.status, record.method, record.path, record.message])).toEqual([
       ["POST", 401, "POST", "/api/auth/login", "Invalid email or password"],
       ["GET", 404, "GET", "/api/nope", "Route not found"],
@@ -120,7 +121,7 @@ describe("(S16) every successful database change writes one line to app.log", ()
   async function linesFrom(action: () => Promise<unknown>) {
     const before = rawLines(appLog()).length;
     await action();
-    return lines(appLog()).slice(before);
+    return rawLines(appLog()).slice(before).map(parseLine);
   }
   const summary = (added: Line[]) => added.map(({ tag, record }) => [tag, record.status, record.action]);
   const tokenHash = (cookie: string) => createHash("sha256").update(cookie.slice("session=".length)).digest("hex");

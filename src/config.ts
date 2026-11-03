@@ -8,6 +8,15 @@ function required(name: string): string {
 
 const TTL_UNIT_SECONDS = { s: 1, m: 60, h: 3600 } as const;
 
+/** APP_LOG_* / ERROR_LOG_*: file path, rotation size (default 5 MB) and whether to print to the console. */
+function logOptions(prefix: "APP_LOG" | "ERROR_LOG", defaultPath: string) {
+  return {
+    path: process.env[`${prefix}_PATH`] ?? defaultPath,
+    maxBytes: Number(process.env[`${prefix}_MAX_BYTES`] ?? 5 * 1024 * 1024),
+    console: process.env[`${prefix}_CONSOLE`] !== "false",
+  };
+}
+
 /** Parses "<positive int><s|m|h>", e.g. 1h, 30m or 8s. */
 function ttlSeconds(value: string): number {
   const match = /^([1-9]\d*)(s|m|h)$/.exec(value);
@@ -23,10 +32,7 @@ export const config = {
   authRateLimit: Number(process.env.AUTH_RATE_LIMIT ?? 20),
   // Fixed session lifetime from sign-in, never extended; the e2e run shortens it to test real expiry. Default 1 hour.
   sessionTtlSeconds: ttlSeconds(process.env.SESSION_TTL ?? "1h"),
-  errorLog: {
-    path: process.env.ERROR_LOG_PATH ?? "logs/errors.log",
-    maxBytes: Number(process.env.ERROR_LOG_MAX_BYTES ?? 5 * 1024 * 1024),
-    console: process.env.ERROR_LOG_CONSOLE !== "false",
-  },
+  errorLog: logOptions("ERROR_LOG", "logs/errors.log"),
+  appLog: logOptions("APP_LOG", "logs/app.log"),
   isProduction: process.env.NODE_ENV === "production",
 };

@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { User } from "../generated/prisma/client.js";
 import { audit } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
+import { logChange } from "../lib/logs.js";
 import { parse } from "../lib/validate.js";
 import { currentUser, requirePermission } from "../middleware/auth.js";
 
@@ -28,5 +29,6 @@ profileRouter.patch("/", requirePermission("profile:own"), async (req, res) => {
   const input = parse(updateProfileSchema, req.body);
   const user = await prisma.user.update({ where: { id: currentUser(req).userId }, data: input });
   await audit(req, "UPDATE_PROFILE", { resourceId: user.id, metadata: { fields: Object.keys(input) } });
+  logChange(req, { status: 200, action: "PROFILE_UPDATED", resourceId: user.id });
   res.json(publicUser(user));
 });

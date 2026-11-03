@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { logFailure } from "../lib/error_log.js";
+import { logFailure } from "../lib/logs.js";
 import { HttpError } from "../lib/errors.js";
 
 /** Every failed response goes through here so it's logged (api_spec.md §8). */

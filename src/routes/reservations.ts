@@ -6,6 +6,7 @@ import { SLOT_START_TIMES } from "../domain/slots.js";
 import { audit } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { badRequest, notFound } from "../lib/errors.js";
+import { logChange } from "../lib/logs.js";
 import { notify } from "../lib/notify.js";
 import { branchEnum, dateString, parse, sectorEnum } from "../lib/validate.js";
 import { currentUser, requirePermission } from "../middleware/auth.js";
@@ -73,6 +74,7 @@ reservationsRouter.post("/", async (req, res) => {
   const reservation = await bookReservation(input, { userId: user.userId, createdById: user.userId, source: "APP" });
 
   await audit(req, "CREATE_RESERVATION", { resourceId: reservation.id, metadata: { source: "APP" } });
+  logChange(req, { status: 201, action: "RESERVATION_CREATED", resourceId: reservation.code });
   const { email } = await prisma.user.findUniqueOrThrow({ where: { id: user.userId }, select: { email: true } });
   await notify(email, "Booking confirmed", `Reservation ${reservation.code} at ${reservation.slotStart.toISOString()}`);
   res.status(201).json(reservation);
@@ -108,6 +110,7 @@ reservationsRouter.patch("/:id", async (req, res) => {
     resourceId: reservation.id,
     metadata: { from: existing.slotStart, to: slotStart, partySize: newPartySize },
   });
+  logChange(req, { status: 200, action: "RESERVATION_RESCHEDULED", resourceId: reservation.code });
   res.json(reservation);
 });
 
@@ -125,5 +128,6 @@ reservationsRouter.delete("/:id", async (req, res) => {
     });
   });
   await audit(req, "CANCEL_RESERVATION", { resourceId: reservation.id });
+  logChange(req, { status: 200, action: "RESERVATION_CANCELLED", resourceId: reservation.code });
   res.json(reservation);
 });
