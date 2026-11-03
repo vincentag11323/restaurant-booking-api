@@ -50,7 +50,7 @@ Neither suite needs a database. Each boots its own in-memory PGlite (Playwright 
 
 ## Production notes
 
-* Set `NODE_ENV=production`, a long random `SESSION_SECRET`, an `AGENT_API_KEY` of at least 32 characters, `CORS_ORIGIN` to the web app's URL, and serve over HTTPS (the session cookie is `Secure` in production).
+* Set `NODE_ENV=production`, a long random `SESSION_SECRET` (at least 32 characters; the app refuses to start otherwise), an `AGENT_API_KEY` of at least 32 characters, `CORS_ORIGIN` to the web app's URL, and serve over HTTPS (the session cookie is `Secure` in production).
 * `npm run build && npm start`. Apply migrations with `npm run db:migrate`.
 * Give the app's database role only `INSERT, SELECT` on `"AuditLog"`.
 

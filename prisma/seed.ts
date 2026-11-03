@@ -64,12 +64,18 @@ async function main() {
 
   // The AI booking assistant's account (role AGENT, agent_spec.md §5.5): no password, only the SHA-256 of AGENT_API_KEY.
   if (agentApiKey) {
+    const existing = await prisma.user.findUnique({ where: { email: AGENT_EMAIL } });
+    if (existing && existing.role !== "AGENT") {
+      throw new Error("assistant@resortos.internal belongs to a non-AGENT account; refusing to put the API key on it");
+    }
     const apiKeyHash = hashApiKey(agentApiKey);
     await prisma.user.upsert({
       where: { email: AGENT_EMAIL },
       update: { apiKeyHash, passwordHash: null },
       create: { email: AGENT_EMAIL, name: "AI booking assistant", role: "AGENT", passwordHash: null, apiKeyHash },
     });
+  } else {
+    console.warn("AGENT_API_KEY is not set: the AI assistant's account was not created/updated");
   }
 }
 
