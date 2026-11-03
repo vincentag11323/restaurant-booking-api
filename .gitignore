@@ -7,3 +7,11 @@ playwright-report
 .pglite
 coverage
 logs
+# Videos (test recordings)
+videos/
+*.mp4
+*.webm
+*.mov
+*.avi
+*.mkv
+*.m4v
