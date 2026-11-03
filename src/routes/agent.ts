@@ -54,11 +54,10 @@ agentRouter.post("/reservations", requirePermission("reservation:create_on_behal
   }
 
   // Password-less guest account: sign-up with this email claims it later (agent_spec.md D1).
-  const guest = await prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: { email, phone, name: email.split("@")[0], passwordHash: null },
-  });
+  // INSERT ... ON CONFLICT DO NOTHING, then read: unlike upsert, this stays atomic when several
+  // confirmations for a new email arrive at once (found on real PostgreSQL).
+  await prisma.user.createMany({ data: [{ email, phone, name: email.split("@")[0], passwordHash: null }], skipDuplicates: true });
+  const guest = await prisma.user.findUniqueOrThrow({ where: { email } });
   if (guest.role !== "USER") throw badRequest("This email can't be booked through the assistant");
 
   // The cap is checked inside the booking transaction while holding the guest's row lock, so simultaneous

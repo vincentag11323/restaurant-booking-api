@@ -24,10 +24,12 @@ export const TEST_ENV = {
 
 /** In-memory Postgres (PGlite) with migrations + seed, shared by every Jest test file. */
 export default async function globalSetup() {
-  const db = await PGlite.create();
-  const server = new PGLiteSocketServer({ db, port: DB_PORT, host: "127.0.0.1", maxConnections: 10 });
-  await server.start();
-  Object.assign(process.env, TEST_ENV);
+  // TEST_DATABASE_URL runs the suite on a real (empty) PostgreSQL, e.g. for true parallel races.
+  const external = process.env.TEST_DATABASE_URL;
+  const db = external ? null : await PGlite.create();
+  const server = db ? new PGLiteSocketServer({ db, port: DB_PORT, host: "127.0.0.1", maxConnections: 10 }) : null;
+  await server?.start();
+  Object.assign(process.env, TEST_ENV, external ? { DATABASE_URL: external } : {});
   await run("npx prisma migrate deploy", { env: process.env });
   await run("npx tsx prisma/seed.ts", { env: process.env });
   Object.assign(globalThis, { __PGLITE__: { db, server } });

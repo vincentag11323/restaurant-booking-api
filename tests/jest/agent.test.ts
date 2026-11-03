@@ -72,7 +72,10 @@ describe("agent booking", () => {
     expect((await book({ email: guestEmail, ...booking(56, "11:00") })).body).toEqual({ message: "This email already has 3 upcoming assistant bookings. Sign in to manage them." });
   });
 
-  it("enforces the per-email cap even for simultaneous confirmations", async () => {
+  // PGlite runs every connection in one session, so simultaneous transactions interleave in ways real
+  // PostgreSQL never allows. This race is only meaningful on real PostgreSQL: npm run test:pg.
+  const onRealPostgres = process.env.TEST_DATABASE_URL ? it : it.skip;
+  onRealPostgres("enforces the per-email cap even for simultaneous confirmations (real PostgreSQL)", async () => {
     const guestEmail = email();
     const attempts = await Promise.all(["11:00", "13:30", "17:00"].map((t) => book({ email: guestEmail, ...booking(59, t) })));
     expect(attempts.map((r) => r.status).sort()).toEqual([201, 400, 400]);

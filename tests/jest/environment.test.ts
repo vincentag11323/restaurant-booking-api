@@ -14,7 +14,8 @@ function load<T>(path: string, env: Record<string, string | undefined>): T {
   let mod!: T;
   jest.isolateModules(() => {
     jest.doMock("dotenv/config", () => ({}));
-    process.env = { ...TEST_ENV, ...env } as NodeJS.ProcessEnv;
+    // Keep the suite's current database (PGlite or TEST_DATABASE_URL).
+    process.env = { ...TEST_ENV, DATABASE_URL: original.DATABASE_URL, ...env } as NodeJS.ProcessEnv;
     for (const [key, value] of Object.entries(env)) if (value === undefined) delete process.env[key];
     mod = require(path);
   });

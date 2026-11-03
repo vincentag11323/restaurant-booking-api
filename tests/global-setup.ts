@@ -11,12 +11,14 @@ const run = promisify(exec);
 
 /** Boots an in-memory Postgres (PGlite), applies migrations + seed, and starts the API. */
 export default async function globalSetup() {
-  const db = await PGlite.create();
-  const dbServer = new PGLiteSocketServer({ db, port: DB_PORT, host: "127.0.0.1", maxConnections: 10 });
-  await dbServer.start();
+  // TEST_DATABASE_URL runs the suite on a real (empty) PostgreSQL, e.g. for true parallel races.
+  const external = process.env.TEST_DATABASE_URL;
+  const db = external ? null : await PGlite.create();
+  const dbServer = db ? new PGLiteSocketServer({ db, port: DB_PORT, host: "127.0.0.1", maxConnections: 10 }) : null;
+  await dbServer?.start();
 
   Object.assign(process.env, {
-    DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DB_PORT}/postgres?sslmode=disable`,
+    DATABASE_URL: external ?? `postgresql://postgres:postgres@127.0.0.1:${DB_PORT}/postgres?sslmode=disable`,
     JWT_ACCESS_SECRET: "test-access-secret-test-access-secret",
     JWT_REFRESH_SECRET: "test-refresh-secret-test-refresh-secret",
     AUTH_RATE_LIMIT: "10000",
@@ -37,7 +39,7 @@ export default async function globalSetup() {
 
   return async () => {
     api.close();
-    await dbServer.stop();
-    await db.close();
+    await dbServer?.stop();
+    await db?.close();
   };
 }

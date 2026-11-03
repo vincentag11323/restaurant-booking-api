@@ -30,6 +30,10 @@ npm run typecheck
 
 Neither suite needs a database. Each boots its own in-memory PGlite (Playwright on port 5499, Jest on 5498), applies the migrations and seeds.
 
+**Real PostgreSQL (true parallel races):** PGlite runs everything in one session, so it can't judge real concurrency. Point the suites at an empty Postgres database: `TEST_DATABASE_URL=postgresql://user@localhost:5432/empty_db npm run test:pg`. One race test runs only in this mode.
+
+**Test database for manual or e2e use:** `npm run db-test` (fake data, port 5433) and `npm run start:test` (API on 4400).
+
 * **Playwright** (`tests/unit`, `tests/api`): black-box checks of the HTTP contract in `api_spec.md`.
 * **Jest** (`tests/jest`): supertest against `createApp()` plus direct unit tests, with a 100% statement/branch/function/line threshold over `src/` (excluding `src/generated`). It uses `@swc/jest` because `ts-jest` doesn't support TypeScript 7. The HTML report is in `coverage/lcov-report/index.html`.
 
