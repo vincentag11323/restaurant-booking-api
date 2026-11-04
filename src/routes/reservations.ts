@@ -86,7 +86,7 @@ export const RESERVATION_EXAMPLE = {
 };
 const CREATE_EXAMPLE = { branch: "BRANCH_1", sector: "MAIN_HALL", date: "2026-11-20", startTime: "19:30", partySize: 4, specialRequests: "Window seat, please" };
 
-/** The booking 400 messages shared with the assistant's route (api_spec.md §3). */
+/** The booking 400 messages shared with the assistant's route (API_SPEC.md §3). */
 export const BOOKING_ERRORS = [
   "startTime: startTime must be one of 11:00, 13:30, 17:00, 19:30",
   "partySize: Party size must be between 1 and 50",

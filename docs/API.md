@@ -146,7 +146,19 @@ Extra `400` messages for assistant bookings (exact):
 
 Admins and the assistant's own account show as `exists: false` in a lookup. Every lookup writes `VIEW_GUEST` to the audit diary; every booking writes `CREATE_RESERVATION` (with who it was for).
 
-## 6. Logs
+## 6. Try it in the browser (Swagger)
+
+| Address | What it is |
+|---|---|
+| `GET /api/public/docs` | The Swagger page: every endpoint with its rules, examples and exact error messages, and a "Try it out" button. `/api/public/docs` sends you on to `/api/public/docs/`. |
+| `GET /api/public/docs/openapi.json` | The same information as an OpenAPI 3.1 file, for tools. |
+
+* The document is built from the same rules that check every request, so it can't fall out of date. A test fails if a route is added without being documented.
+* It is on in development and tests. In production it is **off** unless `API_DOCS=true`, so the list of routes isn't advertised.
+* "Try it out" for changes (POST, PATCH, DELETE) only works when the page is opened through the web app's address (`CORS_ORIGIN`), e.g. `http://localhost:5173/api/public/docs`, because changes from any other site are refused (`403 Cross-origin request blocked`). Reads work from anywhere.
+* For routes that need sign-in, first call `POST /api/auth/login` on the same page; the browser then keeps the `session` cookie for the other calls.
+
+## 7. Logs
 
 Two files, one line each, both also printed to the console. Every line starts with the request's method in brackets, then JSON:
 
@@ -178,7 +190,7 @@ What lands in `app.log`:
 
 **Size limit:** before writing, a file over 5 MB (`APP_LOG_MAX_BYTES`, `ERROR_LOG_MAX_BYTES`) is renamed to `.1` (e.g. `app.log.1`) and the previous `.1` is deleted. So each log has one live file and at most one old copy. Set `APP_LOG_CONSOLE=false` or `ERROR_LOG_CONSOLE=false` to stop printing to the console.
 
-## 7. Settings (environment variables)
+## 8. Settings (environment variables)
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -192,4 +204,5 @@ What lands in `app.log`:
 | `AGENT_API_KEY` | — | The assistant's key (at least 32 characters); the seed script stores only its fingerprint. |
 | `APP_LOG_PATH`, `APP_LOG_MAX_BYTES`, `APP_LOG_CONSOLE` | `logs/app.log`, 5 MB, on | The success log. |
 | `ERROR_LOG_PATH`, `ERROR_LOG_MAX_BYTES`, `ERROR_LOG_CONSOLE` | `logs/errors.log`, 5 MB, on | The error log. |
-| `NODE_ENV` | — | `production` turns on `Secure` cookies and trusts the hosting proxy's client IP. |
+| `NODE_ENV` | — | `production` turns on `Secure` cookies, trusts the hosting proxy's client IP, and hides the Swagger page. |
+| `API_DOCS` | off in production | `true` shows the Swagger page and `openapi.json` in production too. |

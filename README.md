@@ -4,6 +4,8 @@ REST API for the ResortOS restaurant booking app: guest accounts, table reservat
 
 Express 5 · TypeScript · Prisma 7 · PostgreSQL · Zod · Playwright
 
+**Swagger:** run `npm run dev` and open http://localhost:4000/api/public/docs (the OpenAPI 3.1 file is at `/api/public/docs/openapi.json`). It is off in production unless `API_DOCS=true`. "Try it out" for POST/PATCH/DELETE works when the page is opened through the web app's origin (`CORS_ORIGIN`), e.g. http://localhost:5173/api/public/docs, because the CSRF Origin rule blocks other origins; for cookie routes, sign in with the page's `/api/auth/login` first.
+
 **Docs:** [docs/API.md](docs/API.md) (every endpoint, who may call it, exact errors, logs) and [docs/DATABASE.md](docs/DATABASE.md) (every table and column), both in plain words.
 
 Specs live in the planning repo (`../requirements/`): `PRD_BOOKING_V1.md` (scope), `API_SPEC.md` (endpoints), `DATA_MODEL.md` (schema).
