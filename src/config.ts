@@ -35,4 +35,6 @@ export const config = {
   errorLog: logOptions("ERROR_LOG", "logs/errors.log"),
   appLog: logOptions("APP_LOG", "logs/app.log"),
   isProduction: process.env.NODE_ENV === "production",
+  // The docs list every route, so production shows them only when asked to.
+  apiDocs: process.env.NODE_ENV !== "production" || process.env.API_DOCS === "true",
 };

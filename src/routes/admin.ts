@@ -7,8 +7,10 @@ import type { Prisma } from "../generated/prisma/client.js";
 import { audit, securityAlert } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { notFound } from "../lib/errors.js";
+import { ADMIN_ERRORS, SESSION_SECURITY, errorResponses, jsonResponse, registry } from "../lib/openApi.js";
 import { branchEnum, dateString, parse, sectorEnum, statusEnum } from "../lib/validate.js";
 import { currentUser, requirePermission } from "../middleware/auth.js";
+import { RESERVATION_EXAMPLE, idParams, reservationSchema } from "./reservations.js";
 
 /** Read-only by design (PRD v1): only GET routes live here. */
 export const adminRouter = Router();
@@ -36,6 +38,93 @@ const adminReservationSelect = {
   ...reservationSelect,
   user: { select: { name: true, email: true, phone: true } },
 } satisfies Prisma.ReservationSelect;
+
+/** No default here: "today" must be worked out per request, not once at start-up. */
+const statsQuery = z.object({ date: dateString.optional(), branch: branchEnum.optional() });
+const exportQuery = filtersSchema.extend({ format: z.enum(["csv", "json"]).default("csv") });
+
+/** Docs only: the response shapes. */
+export const adminReservationSchema = reservationSchema.extend({
+  customer: z.object({ name: z.string(), email: z.string(), phone: z.string().nullable() }),
+});
+export const adminReservationPageSchema = z.object({ items: z.array(adminReservationSchema), total: z.number().int(), page: z.number().int(), pageSize: z.number().int() });
+export const statsSchema = z.object({
+  date: z.string(),
+  totalBookings: z.number().int(),
+  agentBookings: z.number().int(),
+  totalCovers: z.number().int(),
+  cancellations: z.number().int(),
+  utilization: z.array(z.object({ sector: sectorEnum, usedUnits: z.number().int(), capacityUnits: z.number().int(), rate: z.number() })),
+});
+const ADMIN_RESERVATION_EXAMPLE = { ...RESERVATION_EXAMPLE, customer: { name: "Ayu Lestari", email: "ayu@example.com", phone: "+62 811 0000 001" } };
+const ADMIN_400 = { 400: ["date: Expected date as YYYY-MM-DD"] };
+
+registry.registerPath({
+  method: "get",
+  path: "/api/admins/stats",
+  tags: ["Admins"],
+  security: SESSION_SECURITY,
+  summary: "Numbers for one day",
+  description: "Admins only. Bookings, assistant bookings, covers, cancellations and table use for one restaurant-local date (default today), for one branch or both.",
+  request: { query: statsQuery },
+  responses: {
+    200: jsonResponse("The day's numbers.", statsSchema, {
+      date: "2026-11-20",
+      totalBookings: 12,
+      agentBookings: 3,
+      totalCovers: 41,
+      cancellations: 1,
+      utilization: [{ sector: "MAIN_HALL", usedUnits: 30, capacityUnits: 400, rate: 0.075 }, { sector: "VIP_WING", usedUnits: 2, capacityUnits: 32, rate: 0.0625 }],
+    }),
+    ...errorResponses(ADMIN_ERRORS, ADMIN_400),
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/admins/reservations",
+  tags: ["Admins"],
+  security: SESSION_SECURITY,
+  summary: "Search the booking log",
+  description: "Admins only, read-only. Filters by branch, sector, status, source, local date range and `q` (a booking code exactly, or part of a name, email or phone). Latest sitting first, 20 per page by default (at most 100).",
+  request: { query: listSchema },
+  responses: {
+    200: jsonResponse("One page of bookings with their customers.", adminReservationPageSchema, { items: [ADMIN_RESERVATION_EXAMPLE], total: 1, page: 1, pageSize: 20 }),
+    ...errorResponses(ADMIN_ERRORS, { 400: ["pageSize: Too big: expected number to be <=100"] }),
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/admins/reservations/export",
+  tags: ["Admins"],
+  security: SESSION_SECURITY,
+  summary: "Download the booking log",
+  description:
+    "Admins only. The same filters as the search, as a CSV (default) or JSON file, at most 10,000 rows. CSV cells starting with `=`, `+`, `-` or `@` get a `'` in front so spreadsheets don't run them. Writes an `EXPORT_RESERVATIONS` audit row, and a `SECURITY_ALERT` when more than 1,000 rows are exported.",
+  request: { query: exportQuery },
+  responses: {
+    200: {
+      description: "A file download (`Content-Disposition: attachment`).",
+      content: {
+        "text/csv": { schema: z.string(), example: "code,status,branch,sector,slotStart,slotEnd,partySize,tableIds,customerName,customerEmail,customerPhone,specialRequests,createdAt,cancelledAt,source\n" },
+        "application/json": { schema: z.array(adminReservationSchema), example: [ADMIN_RESERVATION_EXAMPLE] },
+      },
+    },
+    ...errorResponses(ADMIN_ERRORS, ADMIN_400),
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/admins/reservations/{id}",
+  tags: ["Admins"],
+  security: SESSION_SECURITY,
+  summary: "One booking with its customer",
+  description: "Admins only. Writes a `VIEW_RESERVATION_DETAIL` audit row.",
+  request: { params: idParams },
+  responses: { 200: jsonResponse("The booking.", adminReservationSchema, ADMIN_RESERVATION_EXAMPLE), ...errorResponses(ADMIN_ERRORS, { 404: ["Reservation not found"] }) },
+});
 
 type Filters = z.infer<typeof filtersSchema>;
 
@@ -73,10 +162,9 @@ function findAll(filters: Filters, take?: number, skip?: number) {
 }
 
 adminRouter.get("/stats", async (req, res) => {
-  const { date, branch } = parse(
-    z.object({ date: dateString.default(todayLocal(config.utcOffset)), branch: branchEnum.optional() }),
-    req.query,
-  );
+  const query = parse(statsQuery, req.query);
+  const { branch } = query;
+  const date = query.date ?? todayLocal(config.utcOffset);
   const { start, end } = localDayRange(date, date, config.utcOffset);
   const onDate = { branch, slotStart: { gte: start, lt: end } };
 
@@ -139,7 +227,7 @@ function toCsv(rows: AdminRow[]): string {
 }
 
 adminRouter.get("/reservations/export", async (req, res) => {
-  const { format, ...filters } = parse(filtersSchema.extend({ format: z.enum(["csv", "json"]).default("csv") }), req.query);
+  const { format, ...filters } = parse(exportQuery, req.query);
   const rows = await findAll(filters, EXPORT_ROW_CAP);
 
   await audit(req, "EXPORT_RESERVATIONS", { metadata: { rows: rows.length, format, filters } });

@@ -6,10 +6,13 @@ import { config } from "./config.js";
 import { adminRouter } from "./routes/admin.js";
 import { agentRouter } from "./routes/agent.js";
 import { HttpError } from "./lib/errors.js";
+import { RATE_LIMIT_ERROR } from "./lib/openApi.js";
 import { jsonRateLimit } from "./lib/rateLimit.js";
 import { requireAdmin, requireAgentKey, requireSession } from "./middleware/auth.js";
 import { errorHandler, notFoundRoute } from "./middleware/error.js";
 import { authRouter } from "./routes/auth.js";
+import { docsRouter } from "./routes/docs.js";
+import { healthRouter } from "./routes/health.js";
 import { menuRouter, recommendationsRouter } from "./routes/menu.js";
 import { profileRouter } from "./routes/profile.js";
 import { availabilityRouter, reservationsRouter } from "./routes/reservations.js";
@@ -33,15 +36,11 @@ export function createApp() {
   app.use(cookieParser());
 
   // Route groups (API_SPEC.md, "Route groups"): every path starts with one group.
-  const publicRoutes = Router()
-    .get("/health", (_req, res) => {
-      res.json({ status: "ok" });
-    })
-    .use("/menus", menuRouter)
-    .use("/availabilities", availabilityRouter);
+  const publicRoutes = Router().use("/health", healthRouter).use("/menus", menuRouter).use("/availabilities", availabilityRouter);
+  if (config.apiDocs) publicRoutes.use("/docs", docsRouter);
   app.use("/api/public", publicRoutes);
 
-  const authLimiter = jsonRateLimit({ windowMs: 15 * 60_000, limit: config.authRateLimit, message: "Too many attempts. Please wait a few minutes and try again." });
+  const authLimiter = jsonRateLimit({ windowMs: 15 * 60_000, limit: config.authRateLimit, message: RATE_LIMIT_ERROR });
   app.use("/api/auth", authLimiter, authRouter);
 
   const userRoutes = Router()

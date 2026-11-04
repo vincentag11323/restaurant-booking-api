@@ -1,4 +1,4 @@
-// Interactive API docs (api_spec.md §7a; test_scenarios_app.md S17).
+// Interactive API docs (API_SPEC.md §7a; TEST_SCENARIOS_APP.md S17).
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import type { Router } from "express";
@@ -208,8 +208,10 @@ describe("(S17) the documented response schemas match real responses", () => {
 
 describe("(S17) the Swagger UI page", () => {
   it("redirects /api/public/docs to the folder URL so the page's relative assets load", async () => {
-    const res = await request(app).get("/api/public/docs?x=1");
-    expect([res.status, res.headers.location]).toEqual([301, "/api/public/docs/?x=1"]);
+    const plain = await request(app).get("/api/public/docs");
+    expect([plain.status, plain.headers.location]).toEqual([301, "/api/public/docs/"]);
+    const withQuery = await request(app).get("/api/public/docs?x=1");
+    expect([withQuery.status, withQuery.headers.location]).toEqual([301, "/api/public/docs/?x=1"]);
   });
 
   it("serves the page and its script", async () => {

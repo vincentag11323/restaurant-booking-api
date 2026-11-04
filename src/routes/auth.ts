@@ -6,9 +6,10 @@ import { audit, checkFailedLogins } from "../lib/audit.js";
 import { prisma } from "../lib/db.js";
 import { HttpError, badRequest } from "../lib/errors.js";
 import { logChange } from "../lib/logs.js";
+import { CHANGE_ERRORS, RATE_LIMIT_ERROR, errorResponses, jsonBody, jsonResponse, registry } from "../lib/openApi.js";
 import { SESSION_COOKIE, newSessionToken, sessionCookieOptions, sha256Hex } from "../lib/tokens.js";
 import { parse } from "../lib/validate.js";
-import { publicUser } from "./profile.js";
+import { USER_EXAMPLE, publicUser, userSchema } from "./profile.js";
 
 export const authRouter = Router();
 
@@ -26,6 +27,54 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.email().transform((e) => e.toLowerCase()),
   password: z.string().min(1),
+});
+
+/** Docs only: what sign-up and sign-in return. */
+export const authResponseSchema = z.object({ user: userSchema });
+/** Docs only: what sign-out returns. */
+export const logoutSchema = z.object({ message: z.literal("Logged out") });
+
+const AUTH_ERRORS = { 429: [RATE_LIMIT_ERROR] };
+const SESSION_COOKIE_HEADER = {
+  "Set-Cookie": { description: "`session=<random token>; Max-Age=3600; Path=/; HttpOnly; SameSite=Lax` (plus `Secure` in production).", schema: { type: "string" as const } },
+};
+
+registry.registerPath({
+  method: "post",
+  path: "/api/auth/register",
+  tags: ["Auth"],
+  summary: "Sign up and sign in",
+  description:
+    "Anyone may call it. Creates a guest account and signs it in (sets the `session` cookie). Signing up with an email the AI assistant already booked for claims that password-less account and keeps its bookings. Writes a `REGISTER` audit row and `USER_CREATED` (or `USER_CLAIMED`) plus `SESSION_CREATED` lines in app.log.",
+  request: { body: jsonBody(registerSchema, { email: "ayu@example.com", password: "Password123", name: "Ayu Lestari", phone: "+62 811 0000 001" }) },
+  responses: {
+    201: { ...jsonResponse("Signed up and signed in.", authResponseSchema, { user: USER_EXAMPLE }), headers: SESSION_COOKIE_HEADER },
+    ...errorResponses({ 400: ["Email is already registered", "password: Password must be at least 8 characters", "phone: Invalid phone number"] }, CHANGE_ERRORS, AUTH_ERRORS),
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/auth/login",
+  tags: ["Auth"],
+  summary: "Sign in",
+  description:
+    "Anyone may call it. Checks the email and password and sets the `session` cookie, valid for 1 hour. Also deletes this person's sessions that had already run out. An unknown email, a wrong password and an account the assistant made but nobody signed up for all get the same 401. Writes `LOGIN_SUCCESS` or `LOGIN_FAILED` audit rows and `SESSION_CREATED` (and `SESSIONS_EXPIRED_DELETED`) lines in app.log.",
+  request: { body: jsonBody(loginSchema, { email: "ayu@example.com", password: "Password123" }) },
+  responses: {
+    200: { ...jsonResponse("Signed in.", authResponseSchema, { user: USER_EXAMPLE }), headers: SESSION_COOKIE_HEADER },
+    ...errorResponses({ 400: ["email: Invalid email address"], 401: ["Invalid email or password"] }, CHANGE_ERRORS, AUTH_ERRORS),
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/auth/logout",
+  tags: ["Auth"],
+  summary: "Sign out this browser",
+  description:
+    "Anyone may call it. Deletes this cookie's session, so the cookie and any saved copy stop working at once; other devices stay signed in. Clears the cookie. Works with no cookie or an old one. Writes `SESSION_DELETED` in app.log when a session was deleted.",
+  responses: { 200: jsonResponse("Signed out.", logoutSchema, { message: "Logged out" }), ...errorResponses(CHANGE_ERRORS, AUTH_ERRORS) },
 });
 
 /**
