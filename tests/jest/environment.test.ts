@@ -43,6 +43,7 @@ describe("config", () => {
       SESSION_TTL: undefined,
       // Sessions live in the database now; no signing secret is needed.
       SESSION_SECRET: undefined,
+      API_DOCS: undefined,
     });
     expect(config).toMatchObject({
       port: 4000,
@@ -53,6 +54,7 @@ describe("config", () => {
       errorLog: { path: "logs/errors.log", maxBytes: 5 * 1024 * 1024, console: true },
       appLog: { path: "logs/app.log", maxBytes: 5 * 1024 * 1024, console: true },
       sessionTtlSeconds: 3600,
+      apiDocs: true,
     });
   });
 
@@ -73,6 +75,19 @@ describe("production mode", () => {
     expect(app.get("trust proxy")).toBe(1);
     const res = await request(app).post("/api/auth/login").send({ email: "admin@resortos.test", password: "Admin12345!" });
     expect(res.headers["set-cookie"]?.[0]).toMatch(/^session=.*; Secure/);
+    const { prisma } = load<typeof import("../../src/lib/db.js")>("../../src/lib/db.js", {});
+    await prisma.$disconnect();
+  });
+});
+
+describe("(S17) API docs in production", () => {
+  it("are off unless API_DOCS=true", async () => {
+    const off = load<typeof import("../../src/app.js")>("../../src/app.js", { NODE_ENV: "production", API_DOCS: undefined }).createApp();
+    const hidden = await request(off).get("/api/public/docs/openapi.json");
+    expect([hidden.status, hidden.body]).toEqual([404, { message: "Route not found" }]);
+
+    const on = load<typeof import("../../src/app.js")>("../../src/app.js", { NODE_ENV: "production", API_DOCS: "true" }).createApp();
+    expect((await request(on).get("/api/public/docs/openapi.json")).status).toBe(200);
     const { prisma } = load<typeof import("../../src/lib/db.js")>("../../src/lib/db.js", {});
     await prisma.$disconnect();
   });
